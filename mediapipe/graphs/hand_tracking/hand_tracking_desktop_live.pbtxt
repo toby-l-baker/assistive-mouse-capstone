@@ -90,6 +90,12 @@ node {
   output_stream: "hand_rect"
 }
 
+node {
+  calculator: "GestureDetectionCalculator"
+  input_stream: "LANDMARKS:hand_landmarks"
+  output_stream: "GESTURE:gesture"
+}
+
 # Subgraph that renders annotations and overlays them on top of the input
 # images (see renderer_cpu.pbtxt).
 node {
@@ -98,6 +104,7 @@ node {
   input_stream: "LANDMARKS:hand_landmarks"
   input_stream: "NORM_RECT:hand_rect"
   input_stream: "DETECTIONS:palm_detections"
+  input_stream: "GESTURE:gesture"
   output_stream: "IMAGE:output_video"
 }
 

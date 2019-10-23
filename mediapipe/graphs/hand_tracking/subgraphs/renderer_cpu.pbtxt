@@ -3,6 +3,7 @@
 type: "RendererSubgraph"
 
 input_stream: "IMAGE:input_image"
+input_stream: "GESTURE:gesture"
 input_stream: "DETECTIONS:detections"
 input_stream: "LANDMARKS:landmarks"
 input_stream: "NORM_RECT:rect"
@@ -91,10 +92,17 @@ node {
   }
 }
 
+node {
+  calculator: "GestureToRenderDataCalculator"
+  input_stream: "GESTURE:gesture"
+  output_stream: "RENDER_DATA:gesture_render_data"
+}
+
 # Draws annotations and overlays them on top of the input images.
 node {
   calculator: "AnnotationOverlayCalculator"
   input_stream: "INPUT_FRAME:input_image"
+  input_stream: "gesture_render_data"
   input_stream: "detection_render_data"
   input_stream: "landmark_render_data"
   input_stream: "rect_render_data"

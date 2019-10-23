@@ -72,6 +72,7 @@ mediapipe_simple_subgraph(
     deps = [
         "//mediapipe/calculators/util:annotation_overlay_calculator",
         "//mediapipe/calculators/util:detections_to_render_data_calculator",
+        "//mediapipe/calculators/util:gesture_to_render_data_calculator",
         "//mediapipe/calculators/util:landmarks_to_render_data_calculator",
         "//mediapipe/calculators/util:rect_to_render_data_calculator",
     ],

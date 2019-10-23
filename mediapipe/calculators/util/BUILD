@@ -559,6 +559,43 @@ mediapipe_cc_proto_library(
 )
 
 cc_library(
+    name = "gesture_to_render_data_calculator",
+    srcs = ["gesture_to_render_data_calculator.cc"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//mediapipe/framework:calculator_framework",
+        "//mediapipe/framework:calculator_options_cc_proto",
+        "//mediapipe/framework/formats:landmark_cc_proto",
+        "//mediapipe/framework/formats:location_data_cc_proto",
+        "//mediapipe/framework/port:ret_check",
+        "//mediapipe/util:color_cc_proto",
+        "//mediapipe/util:render_data_cc_proto",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/strings",
+    ],
+    alwayslink = 1,
+)
+
+cc_library(
+    name = "gesture_detection_calculator",
+    srcs = ["gesture_detection_calculator.cc"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//mediapipe/framework:calculator_framework",
+        "//mediapipe/framework:calculator_options_cc_proto",
+        "//mediapipe/framework/formats:landmark_cc_proto",
+        "//mediapipe/framework/formats:location_data_cc_proto",
+        "//mediapipe/framework/port:ret_check",
+        "//mediapipe/util:color_cc_proto",
+        "//mediapipe/util:render_data_cc_proto",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/strings",
+    ],
+    alwayslink = 1,
+)
+
+
+cc_library(
     name = "landmarks_to_render_data_calculator",
     srcs = ["landmarks_to_render_data_calculator.cc"],
     visibility = ["//visibility:public"],
@@ -576,6 +613,7 @@ cc_library(
     ],
     alwayslink = 1,
 )
+
 
 cc_library(
     name = "rect_to_render_data_calculator",

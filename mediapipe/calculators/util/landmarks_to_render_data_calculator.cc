@@ -189,6 +189,8 @@ REGISTER_CALCULATOR(LandmarksToRenderDataCalculator);
       landmark_data->set_normalized(false);
       landmark_data->set_x(landmark.x());
       landmark_data->set_y(landmark.y());
+      // TODO: remove
+
     }
     if (visualize_depth) {
       AddConnectionsWithDepth(landmarks, /*normalized=*/false, z_min, z_max,
@@ -209,6 +211,7 @@ REGISTER_CALCULATOR(LandmarksToRenderDataCalculator);
     }
     // Only change rendering if there are actually z values other than 0.
     visualize_depth &= ((z_max - z_min) > 1e-3);
+    int index = 0;
     for (const auto& landmark : landmarks) {
       auto* landmark_data_render =
           AddPointRenderData(options_, render_data.get());
@@ -220,7 +223,16 @@ REGISTER_CALCULATOR(LandmarksToRenderDataCalculator);
       landmark_data->set_normalized(true);
       landmark_data->set_x(landmark.x());
       landmark_data->set_y(landmark.y());
+      /*
+      auto* landmark_data = landmark_data_render->mutable_text();
+      landmark_data->set_normalized(true);
+      landmark_data->set_display_text(std::to_string(index++));
+      landmark_data->set_left(landmark.x());
+      landmark_data->set_baseline(landmark.y());
+      landmark_data->set_font_height(0.05);
+      */
     }
+
     if (visualize_depth) {
       AddConnectionsWithDepth(landmarks, /*normalized=*/true, z_min, z_max,
                               render_data.get());

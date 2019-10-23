@@ -118,6 +118,14 @@ class LandmarkProjectionCalculator : public CalculatorBase {
       output_landmarks->emplace_back(new_landmark);
     }
 
+    //std::cout << (*output_landmarks)[8].x() << ',' << (*output_landmarks)[8].y() << std::endl;
+    /*
+    for (int i = 0; i < output_landmarks->size(); i++) {
+        std::cout << (*output_landmarks)[i].x() << ',' << (*output_landmarks)[i].y() << ',';
+    }
+    std::cout << std::endl;
+    */
+    //std::cout << cc->InputTimestamp() << std::endl;
     cc->Outputs()
         .Tag(kLandmarksTag)
         .Add(output_landmarks.release(), cc->InputTimestamp());

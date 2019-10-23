@@ -35,6 +35,7 @@ cc_library(
         "//mediapipe/graphs/hand_tracking/subgraphs:hand_detection_cpu",
         "//mediapipe/graphs/hand_tracking/subgraphs:hand_landmark_cpu",
         "//mediapipe/graphs/hand_tracking/subgraphs:renderer_cpu",
+        "//mediapipe/calculators/util:gesture_detection_calculator",
     ],
 )
 
