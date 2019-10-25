@@ -12,9 +12,9 @@ class InRange(State):
     '''State where hand motion is tracked'''
     def on_event(self, event):
         if event == 'drag':
-            return InRange()
-        elif event == 'out_of_range':
             return Drag()
+        elif event == 'out_of_range':
+            return OutOfRange()
         else:
             return self
 
