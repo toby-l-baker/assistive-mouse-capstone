@@ -96,6 +96,12 @@ node {
   output_stream: "GESTURE:gesture"
 }
 
+node {
+  calculator: "PipeWritingCalculator"
+  input_stream: "LANDMARKS:hand_landmarks"
+  input_stream: "GESTURE:gesture"
+}
+
 # Subgraph that renders annotations and overlays them on top of the input
 # images (see renderer_cpu.pbtxt).
 node {

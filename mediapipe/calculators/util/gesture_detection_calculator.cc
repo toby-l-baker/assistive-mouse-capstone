@@ -1,3 +1,4 @@
+#include <chrono>
 #include "absl/memory/memory.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
@@ -78,6 +79,9 @@ REGISTER_CALCULATOR(GestureDetectionCalculator);
     */
     if (cc->Inputs().HasTag(kNormLandmarksTag) || cc->Inputs().HasTag(kLandmarksTag)) {
         const auto& landmarks = cc->Inputs().Tag(kLandmarksTag).Get<std::vector<NormalizedLandmark>>();
+        auto now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+        //std::cout << landmarks[0].x() << "," << landmarks[0].y() << "," << now << std::endl;
         // 0: wrist
         // 4: thumb
         // 8: index finger
@@ -96,8 +100,12 @@ REGISTER_CALCULATOR(GestureDetectionCalculator);
         double littleTipWristDistance = distance(landmarks[0].x(), landmarks[0].y(), landmarks[20].x(), landmarks[20].y());
         double littleBottomWristDistance = distance(landmarks[0].x(), landmarks[0].y(), landmarks[17].x(), landmarks[17].y());
 
+        /*
         double thumbAngleCos = angle_cos(landmarks[0].x(), landmarks[0].y(), landmarks[17].x(), landmarks[17].y(),
                 landmarks[0].x(), landmarks[0].y(), landmarks[4].x(), landmarks[4].y());
+                */
+        double thumbTipWristDistance = distance(landmarks[0].x(), landmarks[0].y(), landmarks[4].x(), landmarks[4].y());
+        double thumbBottomWristDistance = distance(landmarks[0].x(), landmarks[0].y(), landmarks[2].x(), landmarks[2].y());
 
         int fingers = 0;
 
@@ -113,9 +121,14 @@ REGISTER_CALCULATOR(GestureDetectionCalculator);
         if (littleTipWristDistance / littleBottomWristDistance > 1.5) {
             fingers++;
         }
+        if (thumbTipWristDistance / thumbBottomWristDistance > 1.5) {
+            fingers++;
+        }
+        /*
         if (thumbAngleCos < 0.5) {
             fingers++;
         }
+        */
 
         int* i = new int;
         *i = fingers;
