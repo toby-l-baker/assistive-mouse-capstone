@@ -80,7 +80,9 @@ class PreviousLoopbackCalculator : public CalculatorBase {
     }
     Packet& loopback_packet = cc->Inputs().Get(loop_id_).Value();
     if (!loopback_packet.IsEmpty()) {
+        if (counter % 2 == 0) {
       loopback_packets_.push_back(loopback_packet);
+        }
       while (!main_ts_.empty() &&
              main_ts_.front() <= loopback_packets_.front().Timestamp()) {
         main_ts_.pop_front();
@@ -91,7 +93,12 @@ class PreviousLoopbackCalculator : public CalculatorBase {
       Timestamp main_timestamp = main_ts_.front();
       main_ts_.pop_front();
       Packet previous_loopback = loopback_packets_.front().At(main_timestamp);
+      if (counter % 2 == 1) {
       loopback_packets_.pop_front();
+      counter = 0;
+      } else {
+          counter++;
+      }
 
       if (previous_loopback.IsEmpty()) {
         // TODO: SetCompleteTimestampBound would be more useful.
@@ -110,6 +117,7 @@ class PreviousLoopbackCalculator : public CalculatorBase {
   CollectionItemId loop_id_;
   CollectionItemId loop_out_id_;
 
+  int counter = 0;
   std::deque<Timestamp> main_ts_;
   std::deque<Packet> loopback_packets_;
 };

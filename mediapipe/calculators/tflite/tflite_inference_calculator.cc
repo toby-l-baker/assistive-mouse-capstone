@@ -143,6 +143,8 @@ class TfLiteInferenceCalculator : public CalculatorBase {
   ::mediapipe::Status LoadModel(CalculatorContext* cc);
   ::mediapipe::Status LoadDelegate(CalculatorContext* cc);
 
+  int counter = 0;
+
   std::unique_ptr<tflite::Interpreter> interpreter_;
   std::unique_ptr<tflite::FlatBufferModel> model_;
   TfLiteDelegate* delegate_ = nullptr;
@@ -325,9 +327,13 @@ REGISTER_CALCULATOR(TfLiteInferenceCalculator);
     RET_CHECK_EQ(interpreter_->Invoke(), kTfLiteOk);
 #endif
   } else {
+      if (counter % 2 == 0) {
     RET_CHECK_EQ(interpreter_->Invoke(), kTfLiteOk);
+        counter = 1;
+    } else {
+      counter++;
+    }
   }
-
   // 3. Output processed tensors.
   if (gpu_output_) {
 #if !defined(MEDIAPIPE_DISABLE_GPU) && !defined(__APPLE__)
@@ -378,6 +384,7 @@ REGISTER_CALCULATOR(TfLiteInferenceCalculator);
   } else {
     // Output result tensors (CPU).
     const auto& tensor_indexes = interpreter_->outputs();
+
     auto output_tensors = absl::make_unique<std::vector<TfLiteTensor>>();
     for (int i = 0; i < tensor_indexes.size(); ++i) {
       TfLiteTensor* tensor = interpreter_->tensor(tensor_indexes[i]);
