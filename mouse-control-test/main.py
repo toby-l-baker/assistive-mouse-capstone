@@ -51,12 +51,6 @@ state = MouseFSM()
 # https://www.pyimagesearch.com/2014/08/18/skin-detection-step-step-example-using-python-opencv/
 # https://stackoverflow.com/questions/8593091/robust-hand-detection-via-computer-vision
 
-# data = np.genfromtxt('mouse_data/circle.csv', delimiter=',')
-# x = data[:, 0]
-# y = data[:, 1]
-# t = data[:, 3]
-# vx = x/0.1
-# vy = y/0.1
 '''Setup variables for a preset mouse path'''
 t = 10
 dt = t / 100
