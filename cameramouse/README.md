@@ -6,3 +6,4 @@
 3. interface.py: contains objects specific to different OS such as a windows mouse and windows monitor
 4. tracker.py: where you create instances of your tracker
 5. main.py: where you run your camera mouse
+6. gesture_recognition.py: the place to store gesture recognition objects 
