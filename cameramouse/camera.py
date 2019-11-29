@@ -47,7 +47,7 @@ class RealSenseCamera(CameraObject):
         if color:
             self.config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
         self.pipeline.start(self.config)
-        print("Initialised Webcam")
+        print("Initialised Realsense")
 
     def capture_color_frame(self):
         frames = self.pipeline.wait_for_frames()
