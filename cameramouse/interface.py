@@ -4,8 +4,7 @@ Title: Interface for dealing with various screen sizes and OS for mouse movement
 Date Created: 28 Nov 2018
 """
 
-import win32api, win32con # for windows mouse
-from mouse_states import OutOfRange
+import win32api, win32con # for windows mouse and monitor
 
 
 class Monitor():

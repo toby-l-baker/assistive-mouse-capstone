@@ -72,9 +72,8 @@ class LukasKanadeResampling(TrackerObject):
         '''Resample the points if necessary'''
         self.resample()
 
-        '''Update previous frames and features'''
-        self.gray_img = self.prev_gray_img
-        self.prev_ftrs = self.new_points.reshape(-1, 1, 2)
+        '''Update previous frames'''
+        self.prev_gray_img = self.gray_img
 
     '''
     Get the new location of the optical flow points
@@ -83,7 +82,7 @@ class LukasKanadeResampling(TrackerObject):
         # Find the position of the points in the next frame
         self.next, status, error = cv2.calcOpticalFlowPyrLK(self.prev_gray_img, self.gray_img, self.prev_ftrs, None, **self.tracker_params)
 
-        if next != None:
+        if self.next is not None:
             self.prev_points = self.prev_ftrs[status == 1]
             self.new_points = self.next[status == 1]
 
@@ -104,9 +103,8 @@ class LukasKanadeResampling(TrackerObject):
             if (y_n - y_p < 5) and (x_n - x_p != 0):
                 vel_y += y_n - y_p
                 y_used += 1
-
-        self.vel_x = vel_x / x_used
-        self.vel_y = vel_y / y_used
+        if (x_used != 0 and self.next is not None): self.vel_x = vel_x / x_used
+        if (y_used != 0 and self.next is not None): self.vel_y = vel_y / y_used
 
     '''
     Draw the motion of the optical flow points on the coloured image
@@ -135,9 +133,12 @@ class LukasKanadeResampling(TrackerObject):
     to tracks
     '''
     def resample(self):
-        if len(self.next) == None:
+        if self.next is None:
             self.mask = np.zeros_like(self.color_img)
-            self.prev_ftrs = cv2.goodFeaturesToTrack(self.prev_gray_img, mask = None, **self.feature_params)
+            self.prev_ftrs = cv2.goodFeaturesToTrack(self.gray_img, mask = None, **self.feature_params)
+            # TODO: change mask to be the region of interest in the image
+        else:
+            self.prev_ftrs = self.new_points.reshape(-1, 1, 2)
 
         # moving_points = 0
         # threshold = 1
