@@ -1,6 +1,6 @@
 # Camera Mouse Folder for Development
 
-# Contents
+## Contents
 1. camera.py: where to create camera objects for various cameras (currently implemented are webcams and the real sense)
 2. cameramouse.py: camera mouse implementations bringing together gesture recognition, trackers, camera and OS
 3. interface.py: contains objects specific to different OS such as a windows mouse and windows monitor
