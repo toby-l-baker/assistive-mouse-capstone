@@ -14,4 +14,4 @@
 - should alter the Gesture object of the camera mouse to reflect the current gesture
 - will likely take in images as the input or take in the output of mediapipe
 
-![](Untitled Diagram.png)
+<img src="Untitled Diagram.png"/>
