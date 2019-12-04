@@ -19,7 +19,8 @@ class CameraMouse():
 
     def run(self):
         while True:
-            self.tracker.update()
+            gray_img, color_img = self.camera.capture_frames()
+            self.tracker.update(gray_img, color_img)
             # self.gesture_recognition.update()
             self.execute_control()
 
@@ -31,8 +32,8 @@ class CameraMouse():
         if self.gesture_recognition.gesture == Gestures.out_of_range:
             return
         else:
-            dx = self.tracker.vel_x
-            dy = self.tracker.vel_y
+            dx = self.tracker.vel_x * self.monitor.width / 10 #scales velocity to the size of the monitor and divides by 10
+            dy = self.tracker.vel_y * self.monitor.height / 10
             self.mouse.move(dx, dy)
             if self.gesture_recognition.gesture == Gestures.click:
                 self.mouse.left_click()
@@ -43,7 +44,7 @@ class CameraMouse():
 
 class OpticalFlowMouse(CameraMouse):
     def __init__(self):
-        self.camera = RealSenseCamera()
+        self.camera = WebcamCamera(0)
         self.monitor = WindowsMonitor()
         self.mouse = WindowsMouse()
         self.gesture_recognition = KeyboardGestureRecognition()

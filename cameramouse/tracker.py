@@ -7,7 +7,7 @@ Date Created: 25/NOV/2019
 from camera import WebcamCamera, RealSenseCamera
 import cv2
 import numpy as np
-from time import clock
+import time
 
 class TrackerObject():
     """
@@ -32,6 +32,7 @@ class TrackerObject():
         self.cam = camera
 
 
+
     """
     To run the tracker you pass it a set of points to track, it will then output
     the points of those locations in the next frames in addition to a boolean indicating
@@ -53,17 +54,21 @@ class LukasKanadeResampling(TrackerObject):
     def __init__(self, tracker_params, feature_params, camera):
         super().__init__(tracker_params, feature_params, camera)
         self.prev_gray_img, self.color_img = self.cam.capture_frames()
+        self.old_t = time.time()
+        self.width, self.height = self.prev_gray_img.shape
         self.prev_ftrs = cv2.goodFeaturesToTrack(self.prev_gray_img, mask = None, **self.feature_params)
         self.mask = np.zeros_like(self.color_img)
 
-    def update(self):
+    def update(self, gray_img, color_img):
         """Get new frames"""
-        self.gray_img, self.color_img = self.cam.capture_frames()
+        self.gray_img = gray_img
+        self.color_img = color_img
+        self.new_t = time.time()
 
         """ Get the new location of the points """
         self.update_points()
 
-        ''' Draw the points on the image'''
+        """ Draw the points on the image"""
         self.draw()
 
         '''Calculate the velocity of the points'''
@@ -74,6 +79,7 @@ class LukasKanadeResampling(TrackerObject):
 
         '''Update previous frames'''
         self.prev_gray_img = self.gray_img
+        self.old_t = self.new_t
 
     '''
     Get the new location of the optical flow points
@@ -103,8 +109,15 @@ class LukasKanadeResampling(TrackerObject):
             if (y_n - y_p < 5) and (x_n - x_p != 0):
                 vel_y += y_n - y_p
                 y_used += 1
-        if (x_used != 0 and self.next is not None): self.vel_x = vel_x / x_used
-        if (y_used != 0 and self.next is not None): self.vel_y = vel_y / y_used
+        dt = self.new_t - self.old_t
+        if (x_used != 0 and self.next is not None):
+            self.vel_x = vel_x / x_used / self.width / (dt)
+        else:
+            self.vel_x = 0
+        if (y_used != 0 and self.next is not None):
+            self.vel_y = vel_y / y_used / self.height / (dt)
+        else:
+            self.vel_y = 0
 
     '''
     Draw the motion of the optical flow points on the coloured image

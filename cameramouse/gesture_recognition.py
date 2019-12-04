@@ -28,39 +28,47 @@ class KeyboardGestureRecognition(GestureRecognition):
     def __init__(self):
         super().__init__()
         self.pressed = {"a": False, "s": False, "d": False, "o": False} # a: click, s:d_click, d: r_click
-        keyboard.on_press(self.update)
+        keyboard.hook(self.update)
 
     def update(self, event):
+        #print(event.event_type)
         if event.name == "a":
-            if self.pressed[event.name]:
+            if event.event_type == "down":
+                if self.pressed[event.name]:
+                    self.gesture = Gestures.null
+                    return
+                # set state of key to pressed
+                self.pressed[event.name] = True
+                self.gesture = Gestures.click
+            else:
+                self.pressed[event.name] = False
                 self.gesture = Gestures.null
-                return
-            # set state of key to pressed
-            self.pressed[event.name] = True
-            self.gesture = Gestures.click
         elif event.name == "s":
-            if self.pressed[event.name]:
+            if event.event_type == "down":
+                if self.pressed[event.name]:
+                    self.gesture = Gestures.null
+                    return
+                # set state of key to pressed
+                self.pressed[event.name] = True
+                self.gesture = Gestures.double_click
+            else:
+                self.pressed[event.name] = False
                 self.gesture = Gestures.null
-                return
-            # set state of key to pressed
-            self.pressed[event.name] = True
-            self.gesture = Gestures.double_click
         elif event.name == "d":
-            if self.pressed[event.name]:
+            if event.event_type == "down":
+                if self.pressed[event.name]:
+                    self.gesture = Gestures.null
+                    return
+                # set state of key to pressed
+                self.pressed[event.name] = True
+                self.gesture = Gestures.right_click
+            else:
+                self.pressed[event.name] = False
                 self.gesture = Gestures.null
-                return
-            # set state of key to pressed
-            self.pressed[event.name] = True
-            self.gesture = Gestures.right_click
         elif event.name == "o":
-            if self.pressed[event.name]:
+            if event.event_type == "down":
+                # set state of key to pressed
                 self.gesture = Gestures.out_of_range
-                return
-            # set state of key to pressed
-            self.pressed[event.name] = True
-            self.gesture = Gestures.out_of_range
-        else:
-            self.pressed["a"] = False
-            self.pressed["s"] = False
-            self.pressed["d"] = False
-            self.pressed["o"] = False
+            else:
+                self.pressed[event.name] = False
+                self.gesture = Gestures.null
