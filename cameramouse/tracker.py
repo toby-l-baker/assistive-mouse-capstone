@@ -88,7 +88,7 @@ class LukasKanadeResampling(TrackerObject):
         # Find the position of the points in the next frame
         self.next, status, error = cv2.calcOpticalFlowPyrLK(self.prev_gray_img, self.gray_img, self.prev_ftrs, None, **self.tracker_params)
 
-        if self.next is not None:
+        if self.next is not None: # prevent errors when next is None, the points will be resampled later if next is none
             self.prev_points = self.prev_ftrs[status == 1]
             self.new_points = self.next[status == 1]
 
@@ -103,20 +103,20 @@ class LukasKanadeResampling(TrackerObject):
         for i, (prev, new) in enumerate(zip(self.prev_points, self.new_points)):
             x_p, y_p = prev.ravel()
             x_n, y_n = new.ravel()
-            if (x_n - x_p < 5) and (x_n - x_p != 0):
+            if (abs(x_n - x_p) < 10) and (abs(x_n - x_p) >= 1): # filter out huge movements and tiny movements
                 vel_x += x_n - x_p
                 x_used += 1
-            if (y_n - y_p < 5) and (x_n - x_p != 0):
+            if (abs(y_n - y_p) < 10) and (abs(x_n - x_p) >= 1): # filter out huge movements and tiny movements
                 vel_y += y_n - y_p
                 y_used += 1
         dt = self.new_t - self.old_t
-        if (x_used != 0 and self.next is not None):
+        if (x_used != 0 and self.next is not None): # calculate velocity of used points
             self.vel_x = vel_x / x_used / self.width / (dt)
-        else:
+        else: # if there are no points set vel to zero
             self.vel_x = 0
-        if (y_used != 0 and self.next is not None):
+        if (y_used != 0 and self.next is not None): # calculate velocity of used points
             self.vel_y = vel_y / y_used / self.height / (dt)
-        else:
+        else: # if there are no points set vel to zero
             self.vel_y = 0
 
     '''
@@ -152,95 +152,3 @@ class LukasKanadeResampling(TrackerObject):
             # TODO: change mask to be the region of interest in the image
         else:
             self.prev_ftrs = self.new_points.reshape(-1, 1, 2)
-
-        # moving_points = 0
-        # threshold = 1
-        # for i, (prev, new) in enumerate(zip(self.prev_points, self.new_points)):
-        #     x_p, y_p = prev.ravel()
-        #     x_n, y_n = new.ravel()
-        #     if (abs(x_p-x_n) > threshold) or (abs(y_p-y_n) > threshold):
-        #         moving_points += 1
-        #
-        # if (len(self.prev_points) < 5):
-        #     self.mask = np.zeros_like(self.color_img)
-
-    #
-    # def run(self):
-    #     try:
-    #         while True:
-    #             # Get new image
-    #             self.gray_img, self.color_img = self.cam.capture_frames()
-    #             # For visualisation
-    #             vis = self.color_img.copy()
-    #             # Get next points
-    #             next, status, error = cv2.calcOpticalFlowPyrLK(self.prev_gray_img, self.gray_img, self.prev_ftrs, None, **self.tracker_params)
-    #             # Selects good feature points for previous position and makes a 2D array
-    #             good_old = self.prev_ftrs[status == 1]
-    #             # Selects good feature points for next position
-    #             good_new = next[status == 1]
-    #             # Draws the optical flow tracks
-    #             for i, (new, old) in enumerate(zip(good_new, good_old)):
-    #                 # Returns a contiguous flattened array as (x, y) coordinates for new point
-    #                 a, b = new.ravel()
-    #                 # Returns a contiguous flattened array as (x, y) coordinates for old point
-    #                 c, d = old.ravel()
-    #                 # Draws line between new and old position with green color and 2 thickness
-    #                 self.mask = cv2.line(self.mask, (a, b), (c, d), self.color, 2)
-    #                 # Draws filled circle (thickness of -1) at new position with green color and radius of 3
-    #                 vis = cv2.circle(vis, (a, b), 3, self.color, -1)
-    #             # Overlays the optical flow tracks on the original frame
-    #             output = cv2.add(vis, self.mask)
-    #             # Create  copy of the gray image
-    #             self.prev_gray_img = self.gray_img.copy()
-    #
-    #             # Update the frame ID
-    #             # self.frame_idx += 1
-    #
-    #             #If we have fewer than 5 points moving then resample
-    #             moving_points = 0 # the number of moving pixels
-    #             threshold = 1 # threshold to be considered moving in pixels
-    #             vel_x = 0
-    #             vel_y = 0
-    #             for i, (prev, new) in enumerate(zip(self.prev_ftrs, good_new.reshape(-1, 1, 2))):
-    #                 x_p, y_p = prev.ravel()
-    #                 x_n, y_n = new.ravel()
-    #                 if (abs(x_p-x_n) > threshold) or (abs(y_p-y_n) > threshold):
-    #                     moving_points += 1
-    #
-    #                 vel_x += x_n - x_p
-    #                 vel_y += y_n - y_p
-    #
-    #             vel_x = vel_x / len(self.prev_ftrs)
-    #             vel_y = vel_y / len(self.prev_ftrs)
-    #             # print('Previous Points %d' % len(self.prev_ftrs))
-    #             # print('Future Points % d' % len(good_new.reshape(-1,1,2)))
-    #             #print("X: %.3f, Y: %.3f" % (vel_x, vel_y))
-    #
-    #
-    #             # cv2.putText(self.mask, 'moving points: %d' % moving_points, (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 1.0, self.white)
-    #             # cv2.putText(self.mask, 'total points: %d' % len(self.prev_ftrs), (20, 60), cv2.FONT_HERSHEY_SIMPLEX, 1.0, self.white)
-    #
-    #
-    #             # Updates previous good feature points
-    #             self.prev_ftrs = good_new.reshape(-1, 1, 2)
-    #
-    #             #Every 5 frames update the points that you want to track
-    #             # if moving_points < 5:
-    #             #     self.mask = np.zeros_like(color_image)
-    #             #     self.prev_ftrs = cv2.goodFeaturesToTrack(self.gray_img, mask = None, **self.feature_params)
-    #
-    #
-    #             # Show images
-    #             cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
-    #             cv2.imshow('RealSense', output)
-    #
-    #             # print(self.prev_ftrs.shape)
-    #
-    #             keyboard = cv2.waitKey(30)
-    #             if keyboard == 'q' or keyboard == 27:
-    #                 break
-    #
-    #     finally:
-    #         if self.realsense:
-    #             pipeline.stop()
-    #         cv2.destroyAllWindows()

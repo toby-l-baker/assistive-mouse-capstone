@@ -33,6 +33,9 @@ class Mouse():
     def double_click(self):
         pass
 
+    def drag(self):
+        pass
+
     def move(self):
         pass
 
@@ -40,6 +43,7 @@ class Mouse():
 class WindowsMouse(Mouse):
     def __init__(self):
         super().__init__()
+        self.mouse_state = "UP"
 
     def left_click(self):
         x, y = win32api.GetCursorPos()
@@ -57,6 +61,15 @@ class WindowsMouse(Mouse):
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP,x,y,0,0)
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN,x,y,0,0)
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP,x,y,0,0)
+
+    def drag(self):
+        x, y = win32api.GetCursorPos()
+        if self.mouse_state == "UP":
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN,x,y,0,0)
+            self.mouse_state = "DOWN"
+        elif self.mouse_state == "DOWN":
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP,x,y,0,0)
+            self.mouse_state = "UP"
 
     def move(self, x_m, y_m):
         x, y = win32api.GetCursorPos()

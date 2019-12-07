@@ -12,7 +12,8 @@ class Gestures(Enum):
     click = 1
     double_click = 2
     right_click = 3
-    out_of_range = 4
+    drag = 4
+    out_of_range = 5
 
 
 class GestureRecognition():
@@ -62,6 +63,17 @@ class KeyboardGestureRecognition(GestureRecognition):
                 # set state of key to pressed
                 self.pressed[event.name] = True
                 self.gesture = Gestures.right_click
+            else:
+                self.pressed[event.name] = False
+                self.gesture = Gestures.null
+        elif event.name == "f":
+            if event.event_type == "down":
+                if self.pressed[event.name]:
+                    self.gesture = Gestures.null
+                    return
+                # set state of key to pressed
+                self.pressed[event.name] = True
+                self.gesture = Gestures.drag
             else:
                 self.pressed[event.name] = False
                 self.gesture = Gestures.null
