@@ -55,7 +55,7 @@ REGISTER_CALCULATOR(PipeWritingCalculator);
 
 ::mediapipe::Status PipeWritingCalculator::Open(CalculatorContext* cc) {
   cc->SetOffset(TimestampDiff(0));
-  fd = open("/home/weihao/Mouse", O_WRONLY);
+  fd = open("/Users/Kururuken/desktop/MediaPipe_Gesture/test", O_WRONLY | O_CREAT);
   return ::mediapipe::OkStatus();
 }
 
