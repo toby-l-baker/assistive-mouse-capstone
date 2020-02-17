@@ -9,7 +9,9 @@ from camera import RealSenseCamera, WebcamCamera, CameraObject
 from tracker import LukasKanadeResampling
 from gesture_recognition import KeyboardGestureRecognition, GestureRecognition, Gestures
 import numpy as np
-import cv2
+import cv2, sys, argparse
+sys.path.append('../hand_tracking')
+from hand_segmentation import HandSegmetation
 
 class CameraMouse():
     def __init__(self):
@@ -46,8 +48,8 @@ class CameraMouse():
                 self.mouse.drag()
 
 class OpticalFlowMouse(CameraMouse):
-    def __init__(self):
-        self.camera = RealSenseCamera()
+    def __init__(self, camera):
+        self.camera = camera
         self.monitor = WindowsMonitor()
         self.mouse = WindowsMouse()
         self.gesture_recognition = KeyboardGestureRecognition()
@@ -69,3 +71,41 @@ class OpticalFlowMouse(CameraMouse):
             ch = 0xFF & cv2.waitKey(1)
             if ch == 27:
                 break
+
+class HandSegmentationMouse(CameraMouse):
+    def __init__(self, camera):
+        self.camera = camera
+        self.monitor = WindowsMonitor()
+        self.mouse = WindowsMouse()
+        self.gesture_recognition = KeyboardGestureRecognition()
+        self.tracker = HandSegmetation(camera, testMorphology=False, numRectangles=9, blurKernel=(7,7))
+
+
+    def run(self):
+        # i = 0
+        while True:
+            gray_img, color_img = self.camera.capture_frames()
+            self.tracker.get_velocity(color_img)
+            # self.gesture_recognition.update()
+            # if i % 5 == 0:
+            # self.gesture_recognition.update()
+            self.execute_control()
+            rect = self.tracker.new_state.rectangle
+            centroid = self.tracker.new_state.centroid
+            # for rect, centroid in rects:
+            cv2.rectangle(color_img, (int(rect[0]), int(rect[1])), \
+                  (int(rect[0]+rect[2]), int(rect[1]+rect[3])), \
+                   [0, 0, 255], 2)
+            cv2.circle(color_img, centroid, 5, [255, 0, 255], -1)
+
+            cv2.imshow("ColorFeed", color_img)
+            # i+=1
+            ch = 0xFF & cv2.waitKey(1)
+            if ch == 27:
+                break
+
+    def velocity_map(self):
+        # TF: https://www.wolframalpha.com/input/?i=plot+tanh%284*x-2%29+%2B+1
+        v_x = 1/25000 * self.tracker.vel_x
+        v_y = 1/25000 * self.tracker.vel_y
+        return v_x, v_y
