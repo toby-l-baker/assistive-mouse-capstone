@@ -18,6 +18,8 @@ class WindowsMonitor(Monitor):
         super().__init__()
         self.width = win32api.GetSystemMetrics(0)
         self.height = win32api.GetSystemMetrics(1)
+        print('Mon Width: %d, Mon Height: %d' % (self.width, self.height))
+
 
 class Mouse():
     '''Class for each mouse e.g. Windows/Linux/MacOS'''

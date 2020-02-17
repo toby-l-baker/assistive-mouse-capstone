@@ -56,6 +56,8 @@ class LukasKanadeResampling(TrackerObject):
         self.prev_gray_img, self.color_img = self.cam.capture_frames()
         self.old_t = time.time()
         self.width, self.height = self.prev_gray_img.shape
+        print("Shape of Frame: ", end='')
+        print(self.prev_gray_img.shape)
         self.prev_ftrs = cv2.goodFeaturesToTrack(self.prev_gray_img, mask = None, **self.feature_params)
         self.mask = np.zeros_like(self.color_img)
 

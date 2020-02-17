@@ -43,9 +43,9 @@ class RealSenseCamera(CameraObject):
         self.pipeline = rs.pipeline()
         self.config = rs.config()
         if depth:
-            self.config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+            self.config.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
         if color:
-            self.config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+            self.config.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
         self.pipeline.start(self.config)
         print("Initialised Realsense")
 

@@ -23,8 +23,8 @@ class CameraMouse():
 
     def velocity_map(self):
         # TF: https://www.wolframalpha.com/input/?i=plot+tanh%284*x-2%29+%2B+1
-        gain_x = np.tanh(4*self.tracker.vel_x-2) + 1 # hyperbolic function gain can be between 0 and 2
-        gain_y = np.tanh(4*self.tracker.vel_y-2) + 1
+        gain_x = 1 # np.tanh(4*self.tracker.vel_x-2) + 1 # hyperbolic function gain can be between 0 and 2
+        gain_y = 1 # np.tanh(4*self.tracker.vel_y-2) + 1
         return (gain_x * self.tracker.vel_x, gain_y * self.tracker.vel_y)
 
     def execute_control(self):
@@ -34,7 +34,7 @@ class CameraMouse():
             v_x, v_y = self.velocity_map()
             dx = v_x * self.monitor.width #scales velocity to the size of the monitor and divides by 10
             dy = v_y * self.monitor.height
-            print("Current amount to move in pixels: ({}, {})".format(dx, dy))
+            # print("Current amount to move in pixels: ({}, {})".format(dx, dy))
             self.mouse.move(dx, dy)
             if self.gesture_recognition.gesture == Gestures.click:
                 self.mouse.left_click()
@@ -47,7 +47,7 @@ class CameraMouse():
 
 class OpticalFlowMouse(CameraMouse):
     def __init__(self):
-        self.camera = WebcamCamera(0)
+        self.camera = RealSenseCamera()
         self.monitor = WindowsMonitor()
         self.mouse = WindowsMouse()
         self.gesture_recognition = KeyboardGestureRecognition()
