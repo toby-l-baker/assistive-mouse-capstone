@@ -30,6 +30,9 @@ class WebcamCamera(CameraObject):
     def __init__(self, src):
         super().__init__()
         self.cam = cv2.VideoCapture(src)
+        frame = self.capture_color_frame()
+        self.width, self.height, _ = frame.shape
+        print("Width: {}, Height: {}".format(self.width, self.height))
         print("Initialised Webcam")
 
     def capture_color_frame(self):
@@ -47,6 +50,9 @@ class RealSenseCamera(CameraObject):
         if color:
             self.config.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
         self.pipeline.start(self.config)
+        frame = self.capture_color_frame()
+        self.width, self.height = frame.shape
+        print("Width: {}, Height: {}".format(self.width, self.height))
         print("Initialised Realsense")
 
     def capture_color_frame(self):

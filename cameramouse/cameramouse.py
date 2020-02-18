@@ -34,8 +34,8 @@ class CameraMouse():
             return
         else:
             v_x, v_y = self.velocity_map()
-            dx = v_x * self.monitor.width #scales velocity to the size of the monitor and divides by 10
-            dy = v_y * self.monitor.height
+            dx = v_x # * self.monitor.width #scales velocity to the size of the monitor and divides by 10
+            dy = v_y # * self.monitor.height
             # print("Current amount to move in pixels: ({}, {})".format(dx, dy))
             self.mouse.move(dx, dy)
             if self.gesture_recognition.gesture == Gestures.click:
@@ -96,7 +96,7 @@ class HandSegmentationMouse(CameraMouse):
             cv2.rectangle(color_img, (int(rect[0]), int(rect[1])), \
                   (int(rect[0]+rect[2]), int(rect[1]+rect[3])), \
                    [0, 0, 255], 2)
-            cv2.circle(color_img, centroid, 5, [255, 0, 255], -1)
+            cv2.circle(color_img, (centroid[0], centroid[1]), 5, [255, 0, 255], -1)
 
             cv2.imshow("ColorFeed", color_img)
             # i+=1
@@ -106,6 +106,9 @@ class HandSegmentationMouse(CameraMouse):
 
     def velocity_map(self):
         # TF: https://www.wolframalpha.com/input/?i=plot+tanh%284*x-2%29+%2B+1
-        v_x = 1/25000 * self.tracker.vel_x
-        v_y = 1/25000 * self.tracker.vel_y
-        return v_x, v_y
+        g_x = (np.tanh(1/10*(self.tracker.vel_x/self.camera.width)-2) + 1) # hyperbolic function gain can be between 0 and 2
+        g_y = (np.tanh(1/10*(self.tracker.vel_y/self.camera.height)-2) + 1)
+        # print("{}, {}".format(g_x, g_y))
+        ret_x = int(self.tracker.vel_x * g_x)
+        ret_y = int(self.tracker.vel_y * g_y)
+        return ret_x, ret_y
