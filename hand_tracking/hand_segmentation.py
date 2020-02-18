@@ -23,9 +23,9 @@ class Hand():
         dy = -(self.centroid[1] - old_state.centroid[1])
         # print("dt {}, dx {}, dy {}".format(dt, dx, dy))
         if dt == 0:
-            self.velocity = (dx/(1/30), dy/(1/30)) # assuming FPS of 30
+            self.velocity = np.array([dx/(1/30), dy/(1/30)]) # assuming FPS of 30
         else:
-            self.velocity = (dx/dt, dy/dt)
+            self.velocity = np.array([dx/dt, dy/dt])
 
 class User():
     def __init__(self, username):
@@ -148,12 +148,12 @@ class HandSegmetation():
         """ TODO: Add geometric filtering to rectangles (ratios etc)"""
         for i, contour in enumerate(cont):
             try:
-                rect = cv2.boundingRect(contour)
+                rect = np.array(cv2.boundingRect(contour))
                 rectArea = cv2.contourArea(contour)
                 moment = cv2.moments(contour)
                 cx = int(moment['m10']/moment['m00'])
                 cy = int(moment['m01']/moment['m00'])
-                centroid = (cx, cy)
+                centroid = np.array([cx, cy])
                 # if rectArea > 75000:
                 self.rectangles.append((rect, centroid, rectArea))
                 # print("{}: {}".format(i, cv2.contourArea(contour)))
@@ -190,6 +190,6 @@ class HandSegmetation():
             # Get velocities
             self.vel_x, self.vel_y = self.new_state.velocity
 
-            self.old_state.set_state(max[0], max[1], max[2], (self.vel_x, self.vel_y), timestamp)
+            self.old_state.set_state(max[0], max[1], max[2], self.new_state.velocity, timestamp)
 
         """TODO: Use changes in hand area to ignore movements"""
