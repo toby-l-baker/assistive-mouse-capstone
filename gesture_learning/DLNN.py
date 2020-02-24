@@ -59,7 +59,7 @@ def build_model(inputs, outputs, summary=False):
     model.add(layers.Dense(16, activation='relu'))
     model.add(layers.Dense(16, activation='relu'))
     model.add(layers.Dense(outputs, activation='softmax'))
-    model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['acc'])
 
     if summary:
         model.summary()
@@ -165,6 +165,8 @@ def main(args):
               + " - val_acc: {:0.4f} (epoch {:d})".format(best[3][1], best[3][0]))
 
         # visualize training
+        print("")
+        build_model(train.data.shape[1], train.labels.shape[1], summary=True)
         plot(np.arange(EPOCHS), average[0], average[1], average[2], average[3])
     else:
         # build model
