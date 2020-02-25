@@ -44,9 +44,10 @@ class HandSegmetation():
         gray_frame, self.color_frame = self.camera.capture_frames()
         self.createRectangles()
 
-        self.morphElement = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (10, 10))
+        self.morphElement = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (10, 20))
+        self.denoiseElement = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
         self.dilationIterations = 7
-        self.erosionIterations = 0
+        self.erosionIterations = 1
         self.colorThresh = 5
         self.areaThreshold = 0
 
@@ -119,6 +120,8 @@ class HandSegmetation():
         self.dilationIterations = cv2.getTrackbarPos("dilate_iterations", "MorphologyTest")
         self.erosionIterations = cv2.getTrackbarPos("erosion_iterations", "MorphologyTest")
         self.colorThresh = cv2.getTrackbarPos("threshold_value", "MorphologyTest")
+        self.lower_threshold = cv2.getTrackbarPos("upper_threshold", "CannyEdges")
+        self.upper_threshold = cv2.getTrackbarPos("lower_threshold", "CannyEdges")
 
     """
     Takes in the current frame (from main) and returns a list of bounding boxes
@@ -131,18 +134,20 @@ class HandSegmetation():
         ret, thresh = cv2.threshold(dst, self.colorThresh, 255, cv2.THRESH_BINARY)
 
         # Group together adjacent points
-        dilation = cv2.dilate(thresh, self.morphElement, iterations = self.dilationIterations)
-        erosion = cv2.erode(dilation, self.morphElement, iterations = self.erosionIterations)
+        opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, self.denoiseElement)
+        dilation = cv2.dilate(opening, self.morphElement, iterations=self.dilationIterations)
+        frame_threshold = cv2.inRange(hsv, (0, 48, 0), (20, 255, 255))
 
         if self.testMorphology:
-            cv2.imshow("MorphologyTest", erosion)
+            cv2.imshow("MorphologyTest", frame_threshold)
+            cv2.imshow("ThresholdHistogram", dilation)
             # print(np.max(dst))
 
         # thresh = cv2.merge((thresh, thresh, thresh))
         # [cv2.bitwise_and(frame, thresh), thresh]
 
         # get contours from thresholded image
-        _, cont, hierarchy = cv2.findContours(erosion, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        _, cont, hierarchy = cv2.findContours(dilation, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         self.rectangles = []
         """ TODO: Add geometric filtering to rectangles (ratios etc)"""

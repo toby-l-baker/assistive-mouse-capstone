@@ -10,8 +10,8 @@ ap.add_argument("-cam", "--camera", type=str, required=True,
 	help="Set to realsense or webcam")
 ap.add_argument("-fname", "--filename", type=str, required=True,
 	help="Set to wherever you want to save data")
-ap.add_argument("-log", "--log", type=bool, required=True,
-	help="Set to wherever you want to save data")
+ap.add_argument("-log", "--log", type=int, required=True,
+	help="Set if you want to save data")
 ap.add_argument("-src", "--src", type=int, default=0,
 	help="src number of camera input")
 args = ap.parse_args()
@@ -23,10 +23,10 @@ elif args.camera == "webcam":
 else:
     raise NameError("Invalid camera type, must me realsense or webcam")
 
-handSeg = HandSegmetation(camera, testMorphology=False, numRectangles=9, blurKernel=(7,7))
+handSeg = HandSegmetation(camera, testMorphology=True, blurKernel=(7,7))
 states = np.zeros((300, 10))
 start = time.time()
-if args.log:
+if args.log == 1:
 	stop_time = 10
 	i = 0
 else:
@@ -37,15 +37,15 @@ if __name__ == "__main__":
     while (time.time() - start) < stop_time:
         gray_img, color_img = camera.capture_frames()
         handSeg.get_velocity(color_img)
-        rect = handSeg.new_state.rectangle
-        centroid = (handSeg.new_state.centroid[0], handSeg.new_state.centroid[1])
-        # for rect, centroid in rects:
-        cv2.rectangle(color_img, (int(rect[0]), int(rect[1])), \
-              (int(rect[0]+rect[2]), int(rect[1]+rect[3])), \
-               [0, 0, 255], 2)
-        cv2.circle(color_img, centroid, 5, [255, 0, 255], -1)
+        # rect = handSeg.new_state.rectangle
+        # centroid = (handSeg.new_state.centroid[0], handSeg.new_state.centroid[1])
+        for rect, centroid, area in handSeg.rectangles:
+            cv2.rectangle(color_img, (int(rect[0]), int(rect[1])), \
+                  (int(rect[0]+rect[2]), int(rect[1]+rect[3])), \
+                   [0, 0, 255], 2)
+            cv2.circle(color_img, (centroid[0], centroid[1]), 5, [255, 0, 255], -1)
 
-        if (args.log) and (i < 300):
+        if (args.log == 1) and (i < 300):
             states[i, 0:4] = handSeg.new_state.rectangle
             states[i, 4:6] = handSeg.new_state.centroid
             states[i, 6:8] = handSeg.new_state.velocity
@@ -60,5 +60,5 @@ if __name__ == "__main__":
             cv2.destroyWindow("ColorFeed")
             break
 
-    if args.log:
+    if args.log == 1:
         np.savetxt(args.filename, states, delimiter=',')
