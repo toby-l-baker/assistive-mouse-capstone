@@ -106,8 +106,8 @@ class HandSegmentationMouse(CameraMouse):
 
     def velocity_map(self):
         # TF: https://www.wolframalpha.com/input/?i=plot+tanh%284*x-2%29+%2B+1
-        g_x = (np.tanh(1/10*(self.tracker.vel_x/self.camera.width)-2) + 1) # hyperbolic function gain can be between 0 and 2
-        g_y = (np.tanh(1/10*(self.tracker.vel_y/self.camera.height)-2) + 1)
+        g_x = (np.tanh(1/8*(self.tracker.vel_x/self.camera.width)-2) + 1) # hyperbolic function gain can be between 0 and 2
+        g_y = (np.tanh(1/8*(self.tracker.vel_y/self.camera.height)-2) + 1)
         # print("{}, {}".format(g_x, g_y))
         ret_x = int(self.tracker.vel_x * g_x)
         ret_y = int(self.tracker.vel_y * g_y)

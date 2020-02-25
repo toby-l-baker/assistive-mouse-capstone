@@ -51,7 +51,7 @@ class RealSenseCamera(CameraObject):
             self.config.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
         self.pipeline.start(self.config)
         frame = self.capture_color_frame()
-        self.width, self.height = frame.shape
+        self.width, self.height, _ = frame.shape
         print("Width: {}, Height: {}".format(self.width, self.height))
         print("Initialised Realsense")
 
