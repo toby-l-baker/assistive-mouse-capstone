@@ -11,7 +11,7 @@ from gesture_recognition import KeyboardGestureRecognition, GestureRecognition, 
 import numpy as np
 import cv2, sys, argparse
 sys.path.append('../hand_tracking')
-from hand_segmentation import HandSegmetation
+from hand_tracking import HandTracker
 
 class CameraMouse():
     def __init__(self):
@@ -78,36 +78,33 @@ class HandSegmentationMouse(CameraMouse):
         self.monitor = WindowsMonitor()
         self.mouse = WindowsMouse()
         self.gesture_recognition = KeyboardGestureRecognition()
-        self.tracker = HandSegmetation(camera, testMorphology=False, numRectangles=9, blurKernel=(7,7))
+        self.tracker = HandTracker(camera, 5) # size of averaging filter is 5
 
 
     def run(self):
         # i = 0
         while True:
-            gray_img, color_img = self.camera.capture_frames()
-            self.tracker.get_velocity(color_img)
-            # self.gesture_recognition.update()
-            # if i % 5 == 0:
-            # self.gesture_recognition.update()
-            self.execute_control()
-            rect = self.tracker.new_state.rectangle
-            centroid = self.tracker.new_state.centroid
-            # for rect, centroid in rects:
-            cv2.rectangle(color_img, (int(rect[0]), int(rect[1])), \
-                  (int(rect[0]+rect[2]), int(rect[1]+rect[3])), \
-                   [0, 0, 255], 2)
-            cv2.circle(color_img, (centroid[0], centroid[1]), 5, [255, 0, 255], -1)
+            # grab frames
+            gray_frame, color_frame = self.camera.capture_frames()
 
-            cv2.imshow("ColorFeed", color_img)
-            # i+=1
+            if not self.tracker.found: # hand is lost
+                self.tracker.global_recognition(color_frame)
+            else: # found the hand lets track it
+                self.tracker.get_velocity(color_frame)
+                self.execute_control()
+
+            cv2.imshow("FeedMe", color_frame)
+
             ch = 0xFF & cv2.waitKey(1)
             if ch == 27:
+                cv2.destroyWindow("FeedMe")
                 break
 
     def velocity_map(self):
         # TF: https://www.wolframalpha.com/input/?i=plot+tanh%284*x-2%29+%2B+1
-        g_x = (np.tanh(1/8*(self.tracker.vel_x/self.camera.width)-2) + 1) # hyperbolic function gain can be between 0 and 2
-        g_y = (np.tanh(1/8*(self.tracker.vel_y/self.camera.height)-2) + 1)
+        print(self.tracker.vel_x)
+        g_x = 1/15+ abs(1/2000*self.tracker.vel_x)# (np.tanh(3*(self.tracker.vel_x/self.camera.width)-2) + 1) # hyperbolic function gain can be between 0 and 2
+        g_y = 1/15 + abs(1/2000*self.tracker.vel_y)# (np.tanh(3*(self.tracker.vel_y/self.camera.height)-2) + 1)
         # print("{}, {}".format(g_x, g_y))
         ret_x = int(self.tracker.vel_x * g_x)
         ret_y = int(self.tracker.vel_y * g_y)
