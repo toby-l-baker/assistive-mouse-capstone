@@ -17,6 +17,13 @@ class Hand():
         self.velocity = velocity
         self.timestamp = timestamp
 
+    def set_prev_state(self, hand):
+        self.centroid = hand.centroid
+        self.rectangle = hand.rectangle
+        self.area = hand.area
+        self.velocity = hand.velocity
+        self.timestamp = hand.timestamp
+
     def update_velocity(self, old_state):
         dt = (self.timestamp - old_state.timestamp)
         dx = -(self.centroid[0] - old_state.centroid[0])
@@ -35,20 +42,20 @@ class User():
         self.closed_size = None
 
 class HandSegmetation():
-    def __init__(self, camera, testMorphology=True, numRectangles=9, blurKernel=(7,7)):
+    def __init__(self, camera, testMorphology=False, numRectangles=9, blurKernel=(7,7)):
         self.camera = camera # to allow this function to get frames
         hand_hist_created = False # flag to see if we have a hand histogram
         self.blurKernel = blurKernel # size of kernel for Gaussian Blurring
         self.numRectangles = numRectangles
 
         gray_frame, self.color_frame = self.camera.capture_frames()
-        self.createRectangles()
+        self.createRectangles(rect_size=50)
 
-        self.morphElement = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (10, 20))
-        self.denoiseElement = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
-        self.dilationIterations = 7
-        self.erosionIterations = 1
-        self.colorThresh = 5
+        self.morphElement = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (8, 16))
+        self.denoiseElement = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
+        self.dilationIterations = 4
+        self.erosionIterations = 2
+        self.colorThresh = 50
         self.areaThreshold = 0
 
         self.testMorphology = testMorphology
@@ -84,44 +91,35 @@ class HandSegmetation():
         self.new_state = Hand()
         cv2.destroyWindow("CalibrationFeed")
 
-    def createRectangles(self):
+    def createRectangles(self, rect_size=100):
         rows, cols, _ = self.color_frame.shape
-        #define bottom left corner of the squares
-        self.hand_rect_one_x = np.array(
-            [6 * rows / 20, 6 * rows / 20, 6 * rows / 20, 9 * rows / 20, 9 * rows / 20, 9 * rows / 20, 12 * rows / 20,
-             12 * rows / 20, 12 * rows / 20], dtype=np.uint32)
-        self.hand_rect_one_y = np.array(
-            [9 * cols / 20, 10 * cols / 20, 11 * cols / 20, 9 * cols / 20, 10 * cols / 20, 11 * cols / 20, 9 * cols / 20,
-             10 * cols / 20, 11 * cols / 20], dtype=np.uint32)
-
+        self.rect_size = rect_size
+        self.hand_rect_one_x = int(9 * rows / 20)
+        self.hand_rect_one_y = int(9 * cols / 20)
         # top right corner of the squares
-        self.hand_rect_two_x = self.hand_rect_one_x + 10
-        self.hand_rect_two_y = self.hand_rect_one_y + 10
+        self.hand_rect_two_x = self.hand_rect_one_x + self.rect_size
+        self.hand_rect_two_y = self.hand_rect_one_y + self.rect_size
 
     def draw_rect(self):
-        for i in range(self.numRectangles):
-            cv2.rectangle(self.blur, (self.hand_rect_one_y[i], self.hand_rect_one_x[i]),
-                          (self.hand_rect_two_y[i], self.hand_rect_two_x[i]),
-                          (0, 255, 0), 1)
+        # for i in range(self.numRectangles):
+        cv2.rectangle(self.blur, (self.hand_rect_one_y, self.hand_rect_one_x), (self.hand_rect_two_y, self.hand_rect_two_x), (0, 255, 0), 1)
 
     def hand_histogram(self):
         hsv_frame = cv2.cvtColor(self.blur, cv2.COLOR_BGR2HSV)
-        roi = np.zeros([90, 10, 3], dtype=hsv_frame.dtype) #region of interest
+        roi = np.zeros([self.rect_size, self.rect_size, 3], dtype=hsv_frame.dtype) #region of interest
 
         # load our pixel values from each rectangle into roi variable
-        for i in range(self.numRectangles):
-            roi[i * 10: i * 10 + 10, 0: 10] = hsv_frame[self.hand_rect_one_x[i]:self.hand_rect_one_x[i] + 10,
-                                              self.hand_rect_one_y[i]:self.hand_rect_one_y[i] + 10]
-
-        hand_hist = cv2.calcHist([roi], [0, 1], None, [180, 256], [0, 180, 0, 256])
+        # for i in range(self.numRectangles):
+        roi = hsv_frame[self.hand_rect_one_x:self.hand_rect_one_x + self.rect_size, self.hand_rect_one_y:self.hand_rect_one_y + self.rect_size]
+        # print("Minimum Hue: {}, Maximum Hue: {}".format(np.min(roi[:,:,0]), np.max(roi[:,:,0])))
+        # print("Minimum Sat: {}, Maximum Sat: {}".format(np.min(roi[:,:,1]), np.max(roi[:,:,1])))
+        hand_hist = cv2.calcHist([roi], [0, 1], None, [12, 15], [0, 180, 0, 256])
         return cv2.normalize(hand_hist, hand_hist, 0, 255, cv2.NORM_MINMAX)
 
     def updateIterationsCallback(self, _):
         self.dilationIterations = cv2.getTrackbarPos("dilate_iterations", "MorphologyTest")
         self.erosionIterations = cv2.getTrackbarPos("erosion_iterations", "MorphologyTest")
         self.colorThresh = cv2.getTrackbarPos("threshold_value", "MorphologyTest")
-        self.lower_threshold = cv2.getTrackbarPos("upper_threshold", "CannyEdges")
-        self.upper_threshold = cv2.getTrackbarPos("lower_threshold", "CannyEdges")
 
     """
     Takes in the current frame (from main) and returns a list of bounding boxes
@@ -131,23 +129,26 @@ class HandSegmetation():
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         dst = cv2.calcBackProject([hsv], [0, 1], self.hand_hist, [0, 180, 0, 256], 1)
 
-        ret, thresh = cv2.threshold(dst, self.colorThresh, 255, cv2.THRESH_BINARY)
-
-        # Group together adjacent points
+        disc = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
+        cv2.filter2D(dst, -1, disc, dst)
+        _, thresh = cv2.threshold(dst,self.colorThresh,255,cv2.THRESH_BINARY)
         opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, self.denoiseElement)
         dilation = cv2.dilate(opening, self.morphElement, iterations=self.dilationIterations)
-        frame_threshold = cv2.inRange(hsv, (0, 48, 0), (20, 255, 255))
+        # threshObjectSegment = cv2.merge((threshObjectSegment,threshObjectSegment,threshObjectSegment))
+
+        # locatedObject = cv2.bitwise_and(frame, threshObjectSegment)
+
+        # locatedObjectGray = cv2.cvtColor(locatedObject, cv2.COLOR_BGR2GRAY)
+
+        # _, locatedObjectThresh = cv2.threshold(locatedObjectGray, 20, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+        locatedObject = cv2.medianBlur(dilation, 5)
 
         if self.testMorphology:
-            cv2.imshow("MorphologyTest", frame_threshold)
-            cv2.imshow("ThresholdHistogram", dilation)
-            # print(np.max(dst))
-
-        # thresh = cv2.merge((thresh, thresh, thresh))
-        # [cv2.bitwise_and(frame, thresh), thresh]
+            cv2.imshow("MorphologyTest", dilation)
 
         # get contours from thresholded image
-        _, cont, hierarchy = cv2.findContours(dilation, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        _, cont, hierarchy = cv2.findContours(locatedObject, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         self.rectangles = []
         """ TODO: Add geometric filtering to rectangles (ratios etc)"""
@@ -165,6 +166,26 @@ class HandSegmetation():
             except Exception as e:
                 print(e)
 
+    def getOnlyObjects(self, frame):
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        dst = cv2.calcBackProject([hsv], [0, 1], self.hand_hist, [0, 180, 0, 256], 1)
+
+        disc = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
+        cv2.filter2D(dst, -1, disc, dst)
+        _, thresh = cv2.threshold(dst,self.colorThresh,255,cv2.THRESH_BINARY)
+        erosion = cv2.erode(thresh, self.denoiseElement, iterations = self.erosionIterations)
+        dilation = cv2.dilate(erosion, self.morphElement, iterations=self.dilationIterations)
+
+        locatedObject = cv2.medianBlur(dilation, 5)
+
+        if self.testMorphology:
+            cv2.imshow("MorphologyTest", dilation)
+
+        # get contours from thresholded image
+        _, cont, hierarchy = cv2.findContours(locatedObject, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        return cont
+
     def getMaxRectangle(self):
         try:
             max = self.rectangles[0]
@@ -178,23 +199,23 @@ class HandSegmetation():
 
         return max
 
-    """
-    Gets velocity of hand!!!!
-    """
-    def get_velocity(self, frame):
-        # Finds all the rectangles in our image
-        self.getObjects(frame)
-        # Find the largest one
-        max = self.getMaxRectangle()
-
-        if max is not None:
-            # Update the state of our hand
-            timestamp = time.time()
-            self.new_state.set_state(max[0], max[1], max[2], 0, timestamp) # rect, centroid, area, vel, time
-            self.new_state.update_velocity(self.old_state)
-            # Get velocities
-            self.vel_x, self.vel_y = self.new_state.velocity
-
-            self.old_state.set_state(max[0], max[1], max[2], self.new_state.velocity, timestamp)
-
-        """TODO: Use changes in hand area to ignore movements"""
+    # """
+    # Gets velocity of hand!!!!
+    # """
+    # def get_velocity(self, frame):
+    #     # Finds all the rectangles in our image
+    #     self.getObjects(frame)
+    #     # Find the largest one
+    #     max = self.getMaxRectangle()
+    #
+    #     if max is not None:
+    #         # Update the state of our hand
+    #         timestamp = time.time()
+    #         self.new_state.set_state(max[0], max[1], max[2], 0, timestamp) # rect, centroid, area, vel, time
+    #         self.new_state.update_velocity(self.old_state)
+    #         # Get velocities
+    #         self.vel_x, self.vel_y = self.new_state.velocity
+    #
+    #         self.old_state.set_state(max[0], max[1], max[2], self.new_state.velocity, timestamp)
+    #
+    #     """TODO: Use changes in hand area to ignore movements"""
