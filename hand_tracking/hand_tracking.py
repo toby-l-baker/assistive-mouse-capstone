@@ -6,7 +6,7 @@ from cameramouse import RealSenseCamera, WebcamCamera
 
 class HandTracker():
     def __init__(self, camera, buf_size):
-        self.handSeg = HandSegmetation(camera, testMorphology=True)
+        self.handSeg = HandSegmetation(camera, testMorphology=False)
         self.hand = Hand() # average 5 most recent positions
         self.prev_hand = Hand()
         self.cam = camera
@@ -39,7 +39,7 @@ class HandTracker():
         # Iterate over all contours and check if they are a hand
         for i, cont in enumerate(conts):
             contArea = cv2.contourArea(cont)
-            print("Contour Area: {}".format(contArea))
+            # print("Contour Area: {}".format(contArea))
             # print("Convexity: {}".format(k))
             hull = cv2.convexHull(cont,returnPoints = False)
             defects = cv2.convexityDefects(cont,hull)
@@ -87,11 +87,12 @@ class HandTracker():
                 area = cv2.contourArea(cont)
                 if area > maxArea:
                     maxI = i
+                    maxArea = area
             rect = np.array(cv2.boundingRect(conts[maxI]))
             # need to do a coordinate shift as only searching roi
             rect[0] += box[0]
             rect[1] += box[1]
-            rect_area = cv2.contourArea(conts[maxI]) # TODO: If area is too small hand is lost
+            rect_area = maxArea
             moment = cv2.moments(conts[maxI])
             cx = int(moment['m10']/moment['m00'])
             cy = int(moment['m01']/moment['m00'])
@@ -100,18 +101,19 @@ class HandTracker():
             centroid[0] += box[0]
             centroid[1] += box[1]
             self.push(centroid)
-            # Make sure there isn't just a pixel where the hand is gone
-            print("Area Dif: {}".format(rect_area - self.prev_hand.area))
-            if (abs(rect_area - self.prev_hand.area) > self.area_threshold): # filter out big changes in area #(rect_area < self.area_threshold) or
-                self.hand.set_prev_state(self.prev_hand)
-            else:
-                self.hand.set_state(rect, self.averaged_position(), rect_area, np.array([0, 0]), time.time())
+
+            self.hand.set_state(rect, self.averaged_position(), rect_area, np.array([0, 0]), time.time())
+
             cv2.rectangle(frame, (int(box[0]), int(box[1])), \
                   (int(box[2]), int(box[3])), \
                    [0, 0, 255], 2)
             cv2.rectangle(frame, (int(rect[0]), int(rect[1])), \
                   (int(rect[0]+rect[2]), int(rect[1]+rect[3])), \
                    [0, 255, 0], 2)
+            # cv2.rectangle(frame, (int(self.hand.rectangle[0]), int(self.hand.rectangle[1])), \
+            #       (int(self.hand.rectangle[0]+self.hand.rectangle[2]), int(self.hand.rectangle[1]+self.hand.rectangle[3])), \
+            #        [0, 255, 0], 2)
+            # cv2.circle(frame,(self.hand.centroid[0], self.hand.centroid[1]),5,[0,0,255],-1)
 
         # else:
         #     rect = np.array(cv2.boundingRect(conts[0]))
