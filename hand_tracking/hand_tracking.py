@@ -36,6 +36,7 @@ class HandTracker():
              cv2.LINE_AA)
         conts = self.handSeg.getOnlyObjects(color_frame)
 
+        # areas = np.array([cv2.contourArea(cont) for cont in conts])
         # Iterate over all contours and check if they are a hand
         for i, cont in enumerate(conts):
             contArea = cv2.contourArea(cont)
@@ -54,7 +55,7 @@ class HandTracker():
                 # cv2.line(color_frame,start,end,[0,255,0],2)
                 cv2.circle(color_frame,far,5,[0,0,255],-1)
 
-            if (out_count >= 5) and (contArea > self.area_threshold):
+            if (out_count >= 5) and (contArea > self.area_threshold): # thresholds for hand being found
                 # Get bounding region
                 rect = np.array(cv2.boundingRect(cont))
                 # Get centroid
@@ -75,59 +76,53 @@ class HandTracker():
     If the hand is lost for more than self.lost_thresh, we will need
     to call global_recognition again"""
     def update_position(self, frame):
+        # predict hand location based on velocity of hand in prev frame
         box = self.predict_position()
-        roi = frame[box[1]:box[3], box[0]:box[2], :] # only look where we think the hand is
+
+        # only look where we think the hand is
+        roi = frame[box[1]:box[3], box[0]:box[2], :]
+
+        # get all contours in roi
         conts = self.handSeg.getOnlyObjects(roi)
+
+        # Get all contour areas and store in a numpy array
+        areas = np.array([cv2.contourArea(cont) for cont in conts])
+
         if len(conts) == 0: # bye bye
             self.found = 0
         else: # multiple objects - get largest
-            maxArea = 0
-            maxI = 0
-            for i, cont in enumerate(conts):
-                area = cv2.contourArea(cont)
-                if area > maxArea:
-                    maxI = i
-                    maxArea = area
-            rect = np.array(cv2.boundingRect(conts[maxI]))
+            maxI = np.where(areas, np.amax(areas))
+            rect_area = areas[maxI]
+            cont = conts[maxI]
+
+            # get bounding rectangle
+            rect = np.array(cv2.boundingRect(cont))
+
             # need to do a coordinate shift as only searching roi
             rect[0] += box[0]
             rect[1] += box[1]
-            rect_area = maxArea
-            moment = cv2.moments(conts[maxI])
-            cx = int(moment['m10']/moment['m00'])
-            cy = int(moment['m01']/moment['m00'])
-            centroid = np.array([cx, cy])
+
+            # get centroid
+            m = cv2.moments(cont)
+            centroid = np.array([int(m['m10']/m['m00']), int(m['m01']/m['m00'])])
+
             # need to do a coordinate shift as only searching roi
             centroid[0] += box[0]
             centroid[1] += box[1]
+
+            # push new centroid onto the stack
             self.push(centroid)
 
+            # set state of our new hand
             self.hand.set_state(rect, self.averaged_position(), rect_area, np.array([0, 0]), time.time())
 
+            # draw ROI bounding box and boundinng box for the hand
             cv2.rectangle(frame, (int(box[0]), int(box[1])), \
                   (int(box[2]), int(box[3])), \
                    [0, 0, 255], 2)
             cv2.rectangle(frame, (int(rect[0]), int(rect[1])), \
                   (int(rect[0]+rect[2]), int(rect[1]+rect[3])), \
                    [0, 255, 0], 2)
-            # cv2.rectangle(frame, (int(self.hand.rectangle[0]), int(self.hand.rectangle[1])), \
-            #       (int(self.hand.rectangle[0]+self.hand.rectangle[2]), int(self.hand.rectangle[1]+self.hand.rectangle[3])), \
-            #        [0, 255, 0], 2)
-            # cv2.circle(frame,(self.hand.centroid[0], self.hand.centroid[1]),5,[0,0,255],-1)
-
-        # else:
-        #     rect = np.array(cv2.boundingRect(conts[0]))
-        #     rect_area = cv2.contourArea(conts[0]) # TODO: If area is too small hand is lost
-        #     moment = cv2.moments(conts[0])
-        #     cx = int(moment['m10']/moment['m00'])
-        #     cy = int(moment['m01']/moment['m00'])
-        #     centroid = np.array([cx, cy])
-        #     self.push(centroid)
-        #     self.hand.set_state(rect, self.averaged_position(), rect_area, np.array([0, 0]), time.time())
-        #     cv2.rectangle(frame, (int(box[0]), int(box[1])), \
-        #           (int(box[0]+box[2]), int(box[1]+box[3])), \
-        #            [0, 0, 255], 2)
-        # cv2.imshow("ROI", roi)
 
     """Based on our hands previous position, velocity and box size define a
     bounded region to search for the hand in the next frame. If we are beginning
@@ -136,6 +131,7 @@ class HandTracker():
         # move corners
         corners = np.zeros((4), dtype=int)
         corners = self.prev_hand.rectangle
+        
         # transform to corner locations
         corners[2] = corners[0] + corners[2]
         corners[3] = corners[1] + corners[3]
@@ -146,23 +142,10 @@ class HandTracker():
         corners[0:2] -= self.expansion_const
         corners[2:] += self.expansion_const
 
-        # Clip so the prediction is within the frame
-        if corners[0] < 0:
-            corners[0] = 0
-        elif corners[0] > self.x_bound:
-            corners[0] = self.x_bound
-        if corners[2] < 0:
-            corners[2] = 0
-        elif corners[2] > self.x_bound:
-            corners[2] = self.x_bound
-        if corners[1] < 0:
-            corners[1] = 0
-        elif corners[1] > self.y_bound:
-            corners[1] = self.y_bound
-        if corners[3] < 0:
-            corners[3] = 0
-        elif corners[3] > self.y_bound:
-            corners[3] = self.y_bound
+        corners[0] = np.clip(corners[0], 0, self.x_bound)
+        corners[1] = np.clip(corners[1], 0, self.y_bound)
+        corners[2] = np.clip(corners[2], 0, self.x_bound)
+        corners[3] = np.clip(corners[3], 0, self.y_bound)
 
         return corners
 
