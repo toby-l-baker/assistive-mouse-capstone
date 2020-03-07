@@ -11,7 +11,7 @@ int main(int argc, char **argv)
 
     printf("[client_test]: creating client\n");
 
-    client udp_client("127.0.0.1", 7777);
+    client udp_client("localhost", 7777);
     
     printf("[client_test]: client created\n");
     printf("[client_test]: client address = %s\n", udp_client.get_addr().c_str());

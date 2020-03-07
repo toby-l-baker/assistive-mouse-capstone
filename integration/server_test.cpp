@@ -13,7 +13,7 @@ int main(int argc, char **argv)
 
     printf("[server_test]: creating server\n");
 
-    server udp_server("127.0.0.1", 7777);
+    server udp_server("localhost", 7777);
     
     printf("[server_test]: server created\n");
     printf("[server_test]: server address = %s\n", udp_server.get_addr().c_str());
