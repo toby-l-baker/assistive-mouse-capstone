@@ -30,9 +30,9 @@ class Filter():
 
     def map_vel_to_pixels(self, vel):
         # tf = tanh((1/10)x - 2) + 1 where x is the speed in terms of movement on the screen
-        g_x = (np.tanh(1/10*(vel[0]/cam_res[0])-2) + 1) # hyperbolic function gain can be between 0 and 2
-        g_y = (np.tanh(1/10*(vel[1]/cam_res[1])-2) + 1)
-        print("{}, {}".format(g_x, g_y))
+        g_x = 1/15 + abs(1/3000*vel[0])
+        g_y = 1/15 + abs(1/3000*vel[1])
+        # print("{}, {}".format(g_x, g_y))
         ret_x = int(vel[0] * g_x)
         ret_y = int(vel[1] * g_y)
 
@@ -42,19 +42,14 @@ class Filter():
         cursor_positions = []
         cursor_positions.append(self.cursor_initial)
         for i in range(1, len(self.centroids)):
-            dt = self.times[i] - self.times[i-1]
+            # dt = self.times[i] - self.times[i-1]
+            dt = 1/30
             dx = self.centroids[i][0] - self.centroids[i-1][0]
             dy = self.centroids[i][1] - self.centroids[i-1][1]
             v = self.map_vel_to_pixels([-dx/dt, -dy/dt])
             pos = [v[0] + cursor_positions[i-1][0], v[1] + cursor_positions[i-1][1]]
-            if pos[0] > monitor.width:
-                pos[0] = monitor.width
-            elif pos[0] < 0:
-                pos[0] = 0
-            if pos[1] > monitor.height:
-                pos[1] = monitor.height
-            elif pos[1] < 0:
-                pos[1] = 0
+            pos[0] = np.clip(pos[0], 0, monitor.width)
+            pos[1] = np.clip(pos[1], 0, monitor.height)
             cursor_positions.append(pos)
         return np.array(cursor_positions)
 
@@ -63,19 +58,13 @@ class Filter():
         cursor_positions = []
         cursor_positions.append(self.cursor_initial)
         for i in range(1, len(self.averaged_positions)):
-            dt = self.times[i] - self.times[i-1]
+            dt =  1 / 30 # self.times[i] - self.times[i-1]
             dx = self.averaged_positions[i][0] - self.averaged_positions[i-1][0]
             dy = self.averaged_positions[i][1] - self.averaged_positions[i-1][1]
             v = self.map_vel_to_pixels([-dx/dt, -dy/dt])
             pos = [v[0] + cursor_positions[i-1][0], v[1] + cursor_positions[i-1][1]]
-            if pos[0] > monitor.width:
-                pos[0] = monitor.width
-            elif pos[0] < 0:
-                pos[0] = 0
-            if pos[1] > monitor.height:
-                pos[1] = monitor.height
-            elif pos[1] < 0:
-                pos[1] = 0
+            pos[0] = np.clip(pos[0], 0, monitor.width)
+            pos[1] = np.clip(pos[1], 0, monitor.height)
             cursor_positions.append(pos)
 
         return np.array(cursor_positions)
@@ -92,13 +81,42 @@ class AveragingFilter(Filter):
             y = np.average(self.centroids[i:i+self.filter_size, 1])
             self.averaged_positions.append([x, y])
 
+class AreaFilter(Filter):
+    def __init__(self,rects, centroids, vels, areas, times, threshold):
+        super().__init__(rects, centroids, vels, areas, times)
+        self.thresh = threshold
+
+    def filter(self):
+        self.averaged_positions = self.centroids
+        count = 0
+        dt = 1/30
+        delta_area = areas[1:] - areas[:-1]
+        rate_delta_area = (delta_area)/(dt)
+        for i in range(1, len(velocities)):
+            if abs(rate_delta_area[i-1]) > self.thresh:
+                count += 1
+                print("setting me to zero, total count = {}".format(count))
+                self.vels[i, 0] = 0
+                self.vels[i, 1] = 0
+
+    def simulate_cursor(self):
+        self.filter()
+        cursor_positions = []
+        cursor_positions.append(self.cursor_initial)
+        for i in range(0, len(self.vels)):
+            v = self.map_vel_to_pixels([-self.vels[i, 0], -self.vels[i, 1]])
+            pos = [v[0] + cursor_positions[i-1][0], v[1] + cursor_positions[i-1][1]]
+            pos[0] = np.clip(pos[0], 0, monitor.width)
+            pos[1] = np.clip(pos[1], 0, monitor.height)
+            cursor_positions.append(pos)
+        return np.array(cursor_positions)
 
 raw_data = np.loadtxt(args.filename+'.csv', delimiter=',')
 rectangles = raw_data[:, 0:4]
 centroids = raw_data[:, 4:6]
 velocities = raw_data[:, 6:8]
 areas = raw_data[:, 8]
-timestamps = raw_data[:, 9] - raw_data[0, 9] # load times and set initial time to zero
+timestamps = raw_data[:, 9] #- raw_data[0, 9] # load times and set initial time to zero
 
 if args.os == "win":
     global monitor
@@ -112,20 +130,49 @@ cam_res = [1280, 720]
 
 if args.filter == "averaging":
     filter = AveragingFilter(rectangles, centroids, velocities, areas, timestamps, 5)
-else:
-    pass
+
+elif args.filter == "area":
+    filter = AreaFilter(rectangles, centroids, velocities, areas, timestamps, 50000)
+    fig, axs = plt.subplots(2, 2)
+    axs[0, 0].plot(np.arange(0, int(len(areas)*1/30), 1/30), areas, 'x')
+    axs[0, 0].set_title('Contour Area over Time')
+    axs[0, 1].plot(centroids[2:,0], centroids[2:, 1], 'o')
+    axs[0, 1].set_title('Centroids over time')
+    dt = 1/30
+    delta_area = areas[1:] - areas[:-1]
+    rate_delta_area = (delta_area)/(dt)
+    t = np.arange(1/30, int(len(areas)*1/30), 1/30)
+    axs[1, 0].plot(t, rate_delta_area, 'x')
+    axs[1, 0].set_ylim([-200000, 200000])
+    axs[1, 0].set_title('Velocities')
+    vels = np.array([np.sqrt(x**2 + y**2) for x, y in filter.vels])
+    axs[1, 1].plot(t, vels[1:], 'x')
+    axs[1, 1].set_title('Velocities')
+    # axs.legend(numpoints=1, loc='upper left')
+
 
 positions = filter.simulate_cursor()
+print(positions)
 positions_unfilt = filter.simulate_cursor_unfilt()
 
 if args.plot == True:
-    plt.figure()
-    plt.plot(positions[1, 0], positions[1, 1], 'o')
-    plt.xlim([0, monitor.width])
-    plt.ylim([0, monitor.height])
+    # plt.figure()
+    fig, axs = plt.subplots(2, 1)
+
+    axs[0].set_title('Filtered Positions')
+    axs[1].set_title('Unfiltered Cursor Positions')
+    axs[0].set_xlim([0, monitor.width])
+    axs[0].set_ylim([0, monitor.height])
+    axs[1].set_xlim([0, monitor.width])
+    axs[1].set_ylim([0, monitor.height])
+
+
     for i in range(1, len(positions)):
-        plt.plot(positions[i, 0], positions[i, 1], 'x')
-        plt.plot(positions_unfilt[i+filter.filter_size, 0], positions_unfilt[i+filter.filter_size, 1], 'o')
+        axs[0].plot(positions[i, 0], positions[i, 1], 'x')
+        if args.filter == "averaging":
+            axs[1].plot(positions_unfilt[i+filter.filter_size, 0], positions_unfilt[i+filter.filter_size, 1], 'o')
+        elif args.filter == "area":
+            axs[1].plot(positions_unfilt[i-1, 0], positions_unfilt[i-1, 1], 'o')
         plt.pause(0.02)
 
     plt.show()
