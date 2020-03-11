@@ -5,6 +5,7 @@ Date Created: 28 Nov 2018
 """
 
 import win32api, win32con # for windows mouse and monitor
+import pyautogui
 
 
 class Monitor():
@@ -16,10 +17,8 @@ class Monitor():
 class WindowsMonitor(Monitor):
     def __init__(self):
         super().__init__()
-        self.width = win32api.GetSystemMetrics(0)
-        self.height = win32api.GetSystemMetrics(1)
+        self.width, self.height = pyautogui.size()
         print('Mon Width: %d, Mon Height: %d' % (self.width, self.height))
-
 
 class Mouse():
     '''Class for each mouse e.g. Windows/Linux/MacOS'''
@@ -45,34 +44,32 @@ class Mouse():
 class WindowsMouse(Mouse):
     def __init__(self):
         super().__init__()
-        self.mouse_state = "UP"
+        self.state = "UP"
 
-    def left_click(self):
+    def left_click(self, dx, dy):
         x, y = win32api.GetCursorPos()
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN,x,y,0,0)
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP,x,y,0,0)
+        pyautogui.click(x=int(x+dx), y=int(y+dy), button='left')
 
-    def right_click(self):
+    def right_click(self, dx, dy):
         x, y = win32api.GetCursorPos()
-        win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN,x,y,0,0)
-        win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP,x,y,0,0)
+        pyautogui.click(x=int(x+dx), y=int(y+dy), button='right')
 
-    def double_click(self):
+    def double_click(self, dx, dy):
         x, y = win32api.GetCursorPos()
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN,x,y,0,0)
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP,x,y,0,0)
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN,x,y,0,0)
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP,x,y,0,0)
+        pyautogui.click(x=int(x+dx), y=int(y+dy), button='left', clicks=2)
 
-    def drag(self):
+    def mouse_down(self):
         x, y = win32api.GetCursorPos()
-        if self.mouse_state == "UP":
-            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN,x,y,0,0)
-            self.mouse_state = "DOWN"
-        elif self.mouse_state == "DOWN":
-            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP,x,y,0,0)
-            self.mouse_state = "UP"
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN,0,0,0,0)
 
-    def move(self, x_m, y_m):
+    def mouse_up(self):
         x, y = win32api.GetCursorPos()
-        win32api.SetCursorPos((int(x_m+x), int(y_m+y)))
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP,0,0,0,0)
+
+    def moveD(self, dx, dy):
+        x, y = win32api.GetCursorPos()
+        win32api.mouse_event(win32con.MOUSEEVENTF_MOVE,int(dx),int(dy),0,0)
+
+    def move(self, dx, dy):
+        x, y = win32api.GetCursorPos()
+        win32api.SetCursorPos((int(dx+x), int(dy+y)))

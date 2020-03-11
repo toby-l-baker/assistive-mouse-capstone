@@ -69,14 +69,15 @@ class KeyboardGestureRecognition(GestureRecognition):
         elif event.name == "d":
             if event.event_type == "down":
                 if self.pressed[event.name]:
-                    self.gesture = Gestures.null
                     return
                 # set state of key to pressed
                 self.pressed[event.name] = True
-                self.gesture = Gestures.drag
+                if self.gesture == Gestures.drag:
+                    self.gesture = Gestures.null
+                else:
+                    self.gesture = Gestures.drag
             else:
                 self.pressed[event.name] = False
-                self.gesture = Gestures.null
         elif event.name == "o":
             if event.event_type == "down":
                 # set state of key to pressed

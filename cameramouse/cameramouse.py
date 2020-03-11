@@ -37,15 +37,28 @@ class CameraMouse():
             dx = v_x # * self.monitor.width #scales velocity to the size of the monitor and divides by 10
             dy = v_y # * self.monitor.height
             # print("Current amount to move in pixels: ({}, {})".format(dx, dy))
-            self.mouse.move(dx, dy)
-            if self.gesture_recognition.gesture == Gestures.click:
-                self.mouse.left_click()
-            elif self.gesture_recognition.gesture == Gestures.double_click:
-                self.mouse.double_click()
-            elif self.gesture_recognition.gesture == Gestures.right_click:
-                self.mouse.right_click()
-            elif self.gesture_recognition.gesture == Gestures.drag:
-                self.mouse.drag()
+            if self.gesture_recognition.gesture == Gestures.drag:
+                if self.mouse.state == "UP":
+                    self.mouse.mouse_down()
+                    self.mouse.state = "DOWN"
+                    print("MOUSE DOWN")
+                else:
+                    self.mouse.moveD(dx, dy)
+                    print("DRAGGING?")
+                    pass
+            else:
+                if self.mouse.state == "DOWN":
+                    self.mouse.mouse_up()
+                    self.mouse.state = "UP"
+                    print("RESETTING MOUSE TO STATE UP")
+                if self.gesture_recognition.gesture == Gestures.click:
+                    self.mouse.left_click(dx, dy)
+                elif self.gesture_recognition.gesture == Gestures.double_click:
+                    self.mouse.double_click(dx, dy)
+                elif self.gesture_recognition.gesture == Gestures.right_click:
+                    self.mouse.right_click(dx, dy)
+                else:
+                    self.mouse.move(dx, dy)
 
 class OpticalFlowMouse(CameraMouse):
     def __init__(self, camera):
@@ -79,8 +92,8 @@ class HandSegmentationMouse(CameraMouse):
         self.mouse = WindowsMouse()
         self.gesture_recognition = KeyboardGestureRecognition()
         self.tracker = HandTracker(camera, filter_size, filter)
-        self.lin_term = 1/30
-        self.quad_term = 1/30000
+        self.lin_term = 1/40
+        self.quad_term = 1/15000
         self.lin_sens = 5
         self.quad_sens = 5
 
