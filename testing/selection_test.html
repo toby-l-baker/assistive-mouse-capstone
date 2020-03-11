@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+	<head>
+        <meta charset="utf-8" />
+		<title>Selection Test</title>
+	</head>
+	<body>
+        <textarea id="input" rows=10 cols=50></textarea>
+        <button id="submit" onclick="verify_input()">submit</button>
+        <p id="text">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent imperdiet, sapien mollis condimentum ultrices, leo mauris finibus augue, eu mattis elit velit quis ex. Praesent tristique dui nec purus venenatis suscipit. Sed vestibulum nisi dictum, vestibulum arcu nec, consequat libero. Donec convallis porttitor vulputate. Vestibulum nec elit eu justo varius efficitur blandit nec nibh. In dictum orci eget sodales suscipit. In ligula metus, pretium nec fringilla id, laoreet ut nunc. Donec dui mauris, rhoncus et consequat non, feugiat at erat. Mauris id massa eu magna imperdiet pellentesque. Praesent aliquet leo nec arcu finibus aliquam. Pellentesque volutpat convallis velit, non tempus purus euismod at. Fusce eu pellentesque massa, laoreet sagittis sem. Mauris eget metus vel eros rutrum dapibus. Praesent ornare felis arcu, vel tincidunt lectus imperdiet eu. Nullam quis mauris turpis.  Pellentesque tempus tellus a sem accumsan cursus. Phasellus vestibulum ipsum accumsan volutpat vehicula. Fusce nec risus nisl. Sed porta ligula nulla, in ullamcorper est ultricies at. Aliquam blandit, ligula eget blandit tincidunt, quam ligula maximus justo, ac eleifend erat felis posuere eros. Nunc nisi sem, tempus a ipsum et, consequat dapibus dolor. Mauris aliquet orci non ultrices vehicula. Donec eu justo elementum, eleifend leo eget, faucibus purus. Praesent mattis vehicula augue, ultricies maximus magna elementum sed. Curabitur elementum facilisis metus, et tempor leo consectetur nec. Etiam tempor, mauris ac vestibulum luctus, dolor urna tempor felis, in pretium magna orci id nulla. Phasellus pulvinar sem commodo, tempor sem sed, iaculis elit. Donec eu porta purus. Donec sem felis, venenatis ac vulputate at, vulputate quis lectus. Mauris ut dui erat. Vivamus fermentum sit amet nunc sit amet viverra.  Donec tempus aliquam ipsum a consectetur. Nunc quis arcu vitae eros mollis elementum. Quisque mattis, massa nec sollicitudin ultrices, ipsum ligula semper enim, id gravida mauris est non sapien. Integer sed mattis arcu. Etiam enim nunc, faucibus eget ligula ac, egestas sodales urna. Phasellus id suscipit eros. Aliquam faucibus nisl ut vestibulum malesuada. Nulla posuere at ipsum eget pulvinar. Nunc ullamcorper nisl eu eros eleifend egestas. Pellentesque pharetra, mauris non consectetur molestie, dui quam tempus diam, ac sodales tellus dui non lectus. In a lacus quis arcu volutpat dapibus. Maecenas ut ipsum nulla. Proin consectetur augue eu metus imperdiet feugiat.  Praesent vulputate, leo id tempor fermentum, justo dolor varius diam, et sagittis felis mauris quis urna. Etiam aliquet eleifend fermentum. Morbi quis erat ut dolor elementum efficitur ac a arcu. Quisque vel semper diam, eu tempor lectus. Aenean tempus eros quis urna ultrices dictum. Sed semper nisi nisl. Quisque vitae quam non diam dignissim lacinia eget non ex. Fusce id metus vel purus auctor fringilla vitae a mauris. Suspendisse vel sapien semper, dapibus elit non, imperdiet justo.  Etiam convallis quis tortor eu cursus. Pellentesque aliquam consequat velit, non congue ligula hendrerit a. Morbi luctus orci elit. Donec ac ligula rutrum diam viverra iaculis. Sed tincidunt vel lectus id tincidunt. Nam faucibus convallis tellus, id elementum libero tempus eu. Vivamus laoreet dictum ante ut auctor. Proin suscipit, purus vel vestibulum imperdiet, mauris orci finibus nibh, eu luctus urna dolor eu nunc. Pellentesque elit urna, congue sed interdum ac, facilisis sit amet sapien. Morbi massa eros, fermentum a feugiat id, consectetur eget nibh. Etiam luctus, turpis vitae convallis tempor, nisl lectus laoreet leo, a pretium tellus lacus eget nunc. Nulla dolor ligula, feugiat vel dui ut, malesuada posuere lectus. Nunc pellentesque nisl eu tortor lacinia, a volutpat turpis bibendum. Duis ornare sem et tristique lobortis. Ut scelerisque porttitor molestie. Etiam sagittis in arcu sed sodales. </p>
+
+    <script>
+function get_start_and_end_any(length) {
+    let num1 = 0;
+    let num2 = 0;
+    while (num1 == num2) {
+        num1 = Math.floor(Math.random() * (length + 1));
+        num2 = Math.floor(Math.random() * (length + 1));
+    }
+    return [Math.min(num1, num2), Math.max(num1, num2)];
+}
+
+function get_start_and_end_short(length) {
+    let num1 = 0;
+    let num2 = 0;
+    while (num1 == num2) {
+        num1 = Math.floor(Math.random() * (length + 1 - 15));
+        num2 = Math.floor(Math.random() * (10) + 5);
+    }
+    return [num1, num1 + num2];
+}
+
+function insert_color(text, indexes) {
+    let res = text.substr(0, indexes[0]);
+    marked_text = text.substring(indexes[0], indexes[1]);
+    res += "<mark><font color=red>";
+    res += text.substring(indexes[0], indexes[1]);
+    res += "</font></mark>";
+    res += text.substring(indexes[1]);
+    return res;
+}
+
+function display_colorized_text() {
+    var t = document.getElementById("text");
+    if (Math.random() > 0.5) {
+        t.innerHTML = insert_color(text, get_start_and_end_short(text.length));
+    } else {
+        t.innerHTML = insert_color(text, get_start_and_end_any(text.length));
+    }
+}
+function verify_input() {
+    let input_box = document.getElementById("input");
+    let input_text = input_box.value.trim();
+    input_box.value = "";
+    if (input_text.localeCompare(marked_text.trim()) == 0) {
+        count++;
+        if (count == 5) {
+            alert((Date.now() - start_time) / 1000 + " seconds");
+            location.reload();
+        }
+        display_colorized_text();
+    }
+}
+    </script>
+    <script>
+alert("Instruction:\n1.select the marked text\n2.right click to copy\n3.paste it to the input box\n4.click submit\n5.Don't use keyborad for copy/paste.\n6.Do it for 5 times");
+var text = document.getElementById("text").innerText;
+var count = 0;
+var start_time = Date.now();
+var marked_text = "";
+display_colorized_text();
+    </script>
+	</body>
+</html>
