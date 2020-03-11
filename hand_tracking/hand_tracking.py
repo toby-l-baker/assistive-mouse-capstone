@@ -4,17 +4,60 @@ from hand_segmentation import HandSegmetation, Hand, User
 sys.path.append('../cameramouse/')
 from cameramouse import RealSenseCamera, WebcamCamera
 
+class Filter():
+    def __init__(self, size):
+        self.positions = np.zeros((size, 2))
+        self.filter_size = size
+
+    """Push a new detected centroid onto the stack"""
+    def insert_point(self, point):
+        self.positions[1:,:] = self.positions[:-1,:]
+        self.positions[0, :] = point
+
+    def get_filtered_position(self):
+        pass
+
+class FIRFilter(Filter):
+    def __init__(self, size):
+        super().__init__(size)
+
+    """Returns the averaged position of our x most recent detections"""
+    def get_filtered_position(self):
+        p_x = np.average(self.positions[:, 0])
+        p_y = np.average(self.positions[:, 1])
+        return np.array([int(p_x), int(p_y)])
+
+class IIRFilter(Filter):
+    def __init__(self, size, alpha):
+        assert(len(alpha) == (size))
+        super().__init__(size)
+        self.alpha = alpha
+
+    def get_filtered_position(self):
+        p_x = np.sum(self.alpha * self.positions[:, 0])
+        p_y = np.sum(self.alpha * self.positions[:, 1])
+        return np.array([p_x, p_y])
+
 class HandTracker():
-    def __init__(self, camera, buf_size):
+    def __init__(self, camera, buf_size, filter, alpha=None):
         self.handSeg = HandSegmetation(camera, testMorphology=False)
         self.hand = Hand() # average 5 most recent positions
         self.prev_hand = Hand()
         self.cam = camera
         self.found = 0 # if we know where the hand is
         self.expansion_const = 35 # how much to expand ROI
-        self.positions = np.zeros((buf_size, 2))
+        if alpha == None:
+            alpha = 1/buf_size * np.ones(buf_size)
+
+        assert(filter in ["IIR", "FIR"])
+        if filter == "IIR":
+            self.filter = IIRFilter(buf_size, alpha)
+        elif filter == "FIR":
+            self.filter = FIRFilter(buf_size)
+
         gray, color = camera.capture_frames()
         self.y_bound, self.x_bound, _ = color.shape
+
         #for global global_recognition
         self.dist_threshold = 10000
         self.area_threshold = 50000
@@ -67,9 +110,9 @@ class HandTracker():
                 self.prev_hand.set_state(rect, centroid, contArea, np.array([0, 0]), time.time())
                 self.found = 1
                 # Load up our array of positions to be used for averaging
-                for i in range(len(self.positions)):
-                    self.positions[i,0] = centroid[0]
-                    self.positions[i,1] = centroid[1]
+                for i in range(len(self.filter.positions)):
+                    self.filter.positions[i,0] = centroid[0]
+                    self.filter.positions[i,1] = centroid[1]
                 break
 
     """Check some subset of the current frame to locate the hand
@@ -91,7 +134,11 @@ class HandTracker():
         if len(conts) == 0: # bye bye
             self.found = 0
         else: # multiple objects - get largest
-            maxI = np.where(areas, np.amax(areas))
+            try:
+                maxI = np.where(areas, np.amax(areas))
+            except Exception as e:
+                maxI = 0
+
             rect_area = areas[maxI]
             cont = conts[maxI]
 
@@ -111,15 +158,16 @@ class HandTracker():
             centroid[1] += box[1]
 
             # push new centroid onto the stack
-            self.push(centroid)
+            self.filter.insert_point(centroid)
 
             # set state of our new hand
-            self.hand.set_state(rect, self.averaged_position(), rect_area, np.array([0, 0]), time.time())
+            self.hand.set_state(rect, self.filter.get_filtered_position(), rect_area, np.array([0, 0]), time.time())
 
             # draw ROI bounding box and boundinng box for the hand
             cv2.rectangle(frame, (int(box[0]), int(box[1])), \
                   (int(box[2]), int(box[3])), \
                    [0, 0, 255], 2)
+            self.handSeg.adapt_histogram([int(rect[0]+rect[2]/3), int(rect[1]+rect[3]/3)], frame) # pass in lower left corner and frame
             cv2.rectangle(frame, (int(rect[0]), int(rect[1])), \
                   (int(rect[0]+rect[2]), int(rect[1]+rect[3])), \
                    [0, 255, 0], 2)
@@ -131,11 +179,12 @@ class HandTracker():
         # move corners
         corners = np.zeros((4), dtype=int)
         corners = self.prev_hand.rectangle
-        
+
         # transform to corner locations
         corners[2] = corners[0] + corners[2]
         corners[3] = corners[1] + corners[3]
-        corners[0:2] = self.prev_hand.velocity*(1/20) + corners[0:2]
+        # velocity = (self.filter.positions[-1, :] - self.filter.positions[-2, :])
+        corners[0:2] = self.prev_hand.velocity*(1/20) + corners[0:2] # self.prev_hand.velocity*(1/20)
         corners[2:] = self.prev_hand.velocity*(1/20) + corners[2:]
 
         # expand the box size a constant amount
@@ -157,17 +206,6 @@ class HandTracker():
         self.prev_hand.set_prev_state(self.hand)
         self.vel_x = self.hand.velocity[0]
         self.vel_y = self.hand.velocity[1]
-
-    """Push a new detected centroid onto the stack"""
-    def push(self, new_pos):
-        self.positions[1:,:] = self.positions[:-1,:]
-        self.positions[0, :] = new_pos
-
-    """Returns the averaged position of our x most recent detections"""
-    def averaged_position(self):
-        p_x = np.average(self.positions[:, 0])
-        p_y = np.average(self.positions[:, 1])
-        return np.array([int(p_x), int(p_y)])
 
 def parse_args():
     # construct the argument parse and parse the arguments

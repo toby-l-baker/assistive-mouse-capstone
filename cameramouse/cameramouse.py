@@ -73,25 +73,42 @@ class OpticalFlowMouse(CameraMouse):
                 break
 
 class HandSegmentationMouse(CameraMouse):
-    def __init__(self, camera):
+    def __init__(self, camera, filter, filter_size):
         self.camera = camera
         self.monitor = WindowsMonitor()
         self.mouse = WindowsMouse()
         self.gesture_recognition = KeyboardGestureRecognition()
-        self.tracker = HandTracker(camera, 5) # size of averaging filter is 5
+        self.tracker = HandTracker(camera, filter_size, filter)
+        self.lin_term = 1/30
+        self.quad_term = 1/30000
+        self.lin_sens = 5
+        self.quad_sens = 5
 
+    def updateSens(self, _):
+        self.lin_sens = cv2.getTrackbarPos("lin term", "FeedMe")
+        self.quad_sens = cv2.getTrackbarPos("quad term", "FeedMe")
 
     def run(self):
         # i = 0
+        flag = False
+        cv2.namedWindow("FeedMe")
+        cv2.createTrackbar("quad term", "FeedMe", \
+          self.lin_sens, 10, self.updateSens)
+        cv2.createTrackbar("lin term", "FeedMe", \
+          self.quad_sens, 10, self.updateSens)
         while True:
             # grab frames
             gray_frame, color_frame = self.camera.capture_frames()
 
             if not self.tracker.found: # hand is lost
+                if flag: # only execute once
+                    self.tracker.handSeg.get_histogram()
+                    flag = False
                 self.tracker.global_recognition(color_frame)
             else: # found the hand lets track it
                 self.tracker.get_velocity(color_frame)
                 self.execute_control()
+                flag = True
 
             cv2.imshow("FeedMe", color_frame)
 
@@ -103,9 +120,9 @@ class HandSegmentationMouse(CameraMouse):
     def velocity_map(self):
         # TF: https://www.wolframalpha.com/input/?i=plot+tanh%284*x-2%29+%2B+1
         # print(self.tracker.vel_x)
-        g_x = 1/15 + abs(1/3000*self.tracker.vel_x)
-        g_y = 1/15 + abs(1/3000*self.tracker.vel_y)# (np.tanh(3*(self.tracker.vel_y/self.camera.height)-2) + 1)
-        # print("{}, {}".format(g_x, g_y))
-        ret_x = int(self.tracker.vel_x * g_x)
-        ret_y = int(self.tracker.vel_y * g_y)
+        def get_gain(vel):
+            return self.lin_term*self.lin_sens + self.quad_term*self.quad_sens*abs(vel)
+
+        ret_x = int(self.tracker.vel_x * get_gain(self.tracker.vel_x))
+        ret_y = int(self.tracker.vel_y * get_gain(self.tracker.vel_y))
         return ret_x, ret_y

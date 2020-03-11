@@ -33,7 +33,7 @@ class KeyboardGestureRecognition(GestureRecognition):
 
     def update(self, event):
         #print(event.event_type)
-        if event.name == "a":
+        if event.name == "s":
             if event.event_type == "down":
                 if self.pressed[event.name]:
                     self.gesture = Gestures.null
@@ -44,7 +44,7 @@ class KeyboardGestureRecognition(GestureRecognition):
             else:
                 self.pressed[event.name] = False
                 self.gesture = Gestures.null
-        elif event.name == "s":
+        elif event.name == "a":
             if event.event_type == "down":
                 if self.pressed[event.name]:
                     self.gesture = Gestures.null
@@ -55,7 +55,7 @@ class KeyboardGestureRecognition(GestureRecognition):
             else:
                 self.pressed[event.name] = False
                 self.gesture = Gestures.null
-        elif event.name == "d":
+        elif event.name == "r":
             if event.event_type == "down":
                 if self.pressed[event.name]:
                     self.gesture = Gestures.null
@@ -66,7 +66,7 @@ class KeyboardGestureRecognition(GestureRecognition):
             else:
                 self.pressed[event.name] = False
                 self.gesture = Gestures.null
-        elif event.name == "f":
+        elif event.name == "d":
             if event.event_type == "down":
                 if self.pressed[event.name]:
                     self.gesture = Gestures.null

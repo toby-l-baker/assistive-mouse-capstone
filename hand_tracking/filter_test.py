@@ -81,10 +81,28 @@ class AveragingFilter(Filter):
             y = np.average(self.centroids[i:i+self.filter_size, 1])
             self.averaged_positions.append([x, y])
 
+class RecursiveFilter(Filter):
+    def __init__(self,rects, centroids, vels, areas, times, scale_factor):
+        super().__init__(rects, centroids, vels, areas, times)
+        assert(scale_factor < 1 and scale_factor > 0)
+        self.scale_factor = scale_factor
+        self.filter_size = 2
+
+    def filter(self):
+        self.averaged_positions = []
+        for i in range(self.filter_size, len(self.centroids)):
+            x_1, y_1 = self.centroids[i-1, :]
+            x_2, y_2 = self.centroids[i-2, :]
+            x_0, y_0 = self.centroids[i, :]
+            x = self.scale_factor / 2 * (x_1 + x_2) + (1 - self.scale_factor) * x_0
+            y = self.scale_factor / 2 * (y_1 + y_2) + (1 - self.scale_factor) * y_0
+            self.averaged_positions.append([x, y])
+
 class AreaFilter(Filter):
     def __init__(self,rects, centroids, vels, areas, times, threshold):
         super().__init__(rects, centroids, vels, areas, times)
         self.thresh = threshold
+        self.unfiltered_vels = vels.copy()
 
     def filter(self):
         self.averaged_positions = self.centroids
@@ -105,7 +123,8 @@ class AreaFilter(Filter):
         cursor_positions.append(self.cursor_initial)
         for i in range(0, len(self.vels)):
             v = self.map_vel_to_pixels([-self.vels[i, 0], -self.vels[i, 1]])
-            pos = [v[0] + cursor_positions[i-1][0], v[1] + cursor_positions[i-1][1]]
+            pos = [v[0] + centroids[i-1][0], v[1] + centroids[i-1][1]]
+            # print(pos)
             pos[0] = np.clip(pos[0], 0, monitor.width)
             pos[1] = np.clip(pos[1], 0, monitor.height)
             cursor_positions.append(pos)
@@ -133,46 +152,79 @@ if args.filter == "averaging":
 
 elif args.filter == "area":
     filter = AreaFilter(rectangles, centroids, velocities, areas, timestamps, 50000)
-    fig, axs = plt.subplots(2, 2)
-    axs[0, 0].plot(np.arange(0, int(len(areas)*1/30), 1/30), areas, 'x')
-    axs[0, 0].set_title('Contour Area over Time')
-    axs[0, 1].plot(centroids[2:,0], centroids[2:, 1], 'o')
-    axs[0, 1].set_title('Centroids over time')
-    dt = 1/30
-    delta_area = areas[1:] - areas[:-1]
-    rate_delta_area = (delta_area)/(dt)
-    t = np.arange(1/30, int(len(areas)*1/30), 1/30)
-    axs[1, 0].plot(t, rate_delta_area, 'x')
-    axs[1, 0].set_ylim([-200000, 200000])
-    axs[1, 0].set_title('Velocities')
-    vels = np.array([np.sqrt(x**2 + y**2) for x, y in filter.vels])
-    axs[1, 1].plot(t, vels[1:], 'x')
-    axs[1, 1].set_title('Velocities')
+
+elif args.filter == "recursive":
+    filter = RecursiveFilter(rectangles, centroids, velocities, areas, timestamps, 0.5)
+    # fig, axs = plt.subplots(2, 2)
+    # axs[0, 0].plot(np.arange(0, int(len(areas)*1/30), 1/30), areas, 'x')
+    # axs[0, 0].set_title('Contour Area over Time')
+    # axs[0, 1].plot(centroids[2:,0], centroids[2:, 1], 'o')
+    # axs[0, 1].set_title('Centroids over time')
+    # dt = 1/30
+    # delta_area = areas[1:] - areas[:-1]
+    # rate_delta_area = (delta_area)/(dt)
+    # t = np.arange(1/30, int(len(areas)*1/30), 1/30)
+    # axs[1, 0].plot(t, rate_delta_area, 'x')
+    # axs[1, 0].set_ylim([-200000, 200000])
+    # axs[1, 0].set_title('Change in area at each timestep')
+    # vels = np.array([np.sqrt(x**2 + y**2) for x, y in filter.vels])
+    # axs[1, 1].plot(t, vels[1:], 'x')
+    # axs[1, 1].set_title('Velocities')
     # axs.legend(numpoints=1, loc='upper left')
 
 
 positions = filter.simulate_cursor()
-print(positions)
+# print(postions)
 positions_unfilt = filter.simulate_cursor_unfilt()
 
 if args.plot == True:
     # plt.figure()
-    fig, axs = plt.subplots(2, 1)
+    fig, axs = plt.subplots(1, 2)
 
     axs[0].set_title('Filtered Positions')
     axs[1].set_title('Unfiltered Cursor Positions')
+    # axs[2].set_title('Filtered Velocities')
     axs[0].set_xlim([0, monitor.width])
     axs[0].set_ylim([0, monitor.height])
     axs[1].set_xlim([0, monitor.width])
     axs[1].set_ylim([0, monitor.height])
 
-
+    axs[0].plot(positions_unfilt[:, 0], positions_unfilt[:, 1])
+    axs[1].plot(positions[:, 0], positions[:, 1])
     for i in range(1, len(positions)):
-        axs[0].plot(positions[i, 0], positions[i, 1], 'x')
-        if args.filter == "averaging":
+        axs[0].plot(positions[i, 0], positions[i, 1], 'o')
+        if args.filter in ["averaging", "recursive"]:
             axs[1].plot(positions_unfilt[i+filter.filter_size, 0], positions_unfilt[i+filter.filter_size, 1], 'o')
         elif args.filter == "area":
             axs[1].plot(positions_unfilt[i-1, 0], positions_unfilt[i-1, 1], 'o')
+            # print(positions_unfilt.shape)
+            # vels = np.array([np.sqrt(x**2 + y**2) for x, y in filter.vels])
+            # axs[2].plot(t, vels[1:], 'o')
         plt.pause(0.02)
+
+    if args.filter == "area":
+        fig, axs = plt.subplots(4, 1)
+
+        axs[0].plot(np.arange(0, int(len(areas)*1/30), 1/30), areas, 'g')
+        axs[0].set_title('Contour Area over Time')
+        axs[0].grid(True)
+        dt = 1/30
+        delta_area = areas[1:] - areas[:-1]
+        rate_delta_area = (delta_area)/(dt)
+        t = np.arange(1/30, int(len(areas)*1/30), 1/30)
+        axs[1].plot(t, rate_delta_area, 'r')
+        axs[1].set_ylim([-250000, 250000])
+        axs[1].set_title('Change in area at each timestep')
+        axs[1].grid(True)
+        vels = np.array([np.sqrt(x**2 + y**2) for x, y in filter.vels])
+        axs[2].plot(t, vels[1:], 'm')
+        axs[2].set_title('Velocities')
+        axs[2].set_ylim([-50, np.max(filter.unfiltered_vels)])
+        axs[2].grid(True)
+        vels_u = np.array([np.sqrt(x**2 + y**2) for x, y in filter.unfiltered_vels])
+        axs[3].plot(t, vels_u[1:], 'b')
+        axs[3].set_title('Velocities Unfiltered')
+        axs[3].set_ylim([-50, np.max(filter.unfiltered_vels)])
+        axs[3].grid(True)
 
     plt.show()

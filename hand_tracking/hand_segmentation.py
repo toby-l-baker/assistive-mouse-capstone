@@ -44,7 +44,6 @@ class User():
 class HandSegmetation():
     def __init__(self, camera, testMorphology=False, numRectangles=9, blurKernel=(7,7)):
         self.camera = camera # to allow this function to get frames
-        hand_hist_created = False # flag to see if we have a hand histogram
         self.blurKernel = blurKernel # size of kernel for Gaussian Blurring
         self.numRectangles = numRectangles
 
@@ -57,8 +56,11 @@ class HandSegmetation():
         self.erosionIterations = 2
         self.colorThresh = 50
         self.areaThreshold = 0
+        self.alpha = 0
+        assert(self.alpha < 1 and self.alpha >= 0)
 
         self.testMorphology = testMorphology
+
         if self.testMorphology:
             cv2.namedWindow("MorphologyTest")
             cv2.createTrackbar("dilate_iterations", "MorphologyTest", \
@@ -68,8 +70,12 @@ class HandSegmetation():
             cv2.createTrackbar("threshold_value", "MorphologyTest", \
               self.colorThresh, 100, self.updateIterationsCallback) #value, count, function to call
 
+        self.get_histogram()
+
+    def get_histogram(self):
         # loop until we have a hand histogram (indicated by pressing 'z')
         cv2.namedWindow("CalibrationFeed")
+        hand_hist_created = False
         while hand_hist_created == False:
             pressed_key = cv2.waitKey(1)
             gray_frame, self.color_frame = self.camera.capture_frames()
@@ -105,6 +111,18 @@ class HandSegmetation():
         roi = hsv_frame[self.hand_rect_one_x:self.hand_rect_one_x + self.rect_size, self.hand_rect_one_y:self.hand_rect_one_y + self.rect_size]
         hand_hist = cv2.calcHist([roi], [0, 1], None, [12, 15], [0, 180, 0, 256])
         return cv2.normalize(hand_hist, hand_hist, 0, 255, cv2.NORM_MINMAX)
+
+    def adapt_histogram(self, box, frame):
+        hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        roi = np.zeros([self.rect_size, self.rect_size, 3], dtype=hsv_frame.dtype) #region of interest
+
+        roi = hsv_frame[box[0]:box[0] + self.rect_size, box[1]:box[1] + self.rect_size]
+        hand_hist_new = cv2.calcHist([roi], [0, 1], None, [12, 15], [0, 180, 0, 256])
+        hand_hist_new = cv2.normalize(hand_hist_new, hand_hist_new, 0, 255, cv2.NORM_MINMAX)
+        self.hand_hist = hand_hist_new * self.alpha + (1-self.alpha) * self.hand_hist
+        cv2.rectangle(frame, (int(box[0]), int(box[1])), \
+              (int(box[0]+self.rect_size), int(box[1]+self.rect_size)), \
+               [0, 255, 0], 2)
 
     def updateIterationsCallback(self, _):
         self.dilationIterations = cv2.getTrackbarPos("dilate_iterations", "MorphologyTest")
