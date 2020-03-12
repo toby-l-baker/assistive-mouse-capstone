@@ -41,16 +41,13 @@ class CameraMouse():
                 if self.mouse.state == "UP":
                     self.mouse.mouse_down()
                     self.mouse.state = "DOWN"
-                    print("MOUSE DOWN")
                 else:
                     self.mouse.moveD(dx, dy)
-                    print("DRAGGING?")
                     pass
             else:
                 if self.mouse.state == "DOWN":
                     self.mouse.mouse_up()
                     self.mouse.state = "UP"
-                    print("RESETTING MOUSE TO STATE UP")
                 if self.gesture_recognition.gesture == Gestures.click:
                     self.mouse.left_click(dx, dy)
                 elif self.gesture_recognition.gesture == Gestures.double_click:
