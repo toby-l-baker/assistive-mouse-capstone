@@ -33,10 +33,7 @@ class CameraMouse():
         if self.gesture_recognition.gesture == Gestures.out_of_range:
             return
         else:
-            v_x, v_y = self.velocity_map()
-            dx = v_x # * self.monitor.width #scales velocity to the size of the monitor and divides by 10
-            dy = v_y # * self.monitor.height
-            # print("Current amount to move in pixels: ({}, {})".format(dx, dy))
+            dx, dy = self.velocity_map()
             if self.gesture_recognition.gesture == Gestures.drag:
                 if self.mouse.state == "UP":
                     self.mouse.mouse_down()
@@ -88,8 +85,8 @@ class HandSegmentationMouse(CameraMouse):
         self.monitor = WindowsMonitor()
         self.mouse = WindowsMouse()
         self.gesture_recognition = KeyboardGestureRecognition()
-        self.tracker = HandTracker(camera, filter_size, filter)
-        self.lin_term = 1/40
+        self.tracker = HandTracker(camera, filter_size, filter, alpha=0.5)
+        self.lin_term = 1/60
         self.quad_term = 1/15000
         self.lin_sens = 5
         self.quad_sens = 5
