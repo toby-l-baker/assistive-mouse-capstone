@@ -18,11 +18,11 @@ class Hand():
         self.timestamp = timestamp
 
     def set_prev_state(self, hand):
-        self.centroid = hand.centroid.copy()
-        self.rectangle = hand.rectangle.copy()
-        self.area = hand.area.copy()
-        self.velocity = hand.velocity.copy()
-        self.timestamp = hand.timestamp.copy()
+        self.centroid = hand.centroid
+        self.rectangle = hand.rectangle
+        self.area = hand.area
+        self.velocity = hand.velocity
+        self.timestamp = hand.timestamp
 
     def update_velocity(self, old_state):
         dt = (self.timestamp - old_state.timestamp)
