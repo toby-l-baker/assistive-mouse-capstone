@@ -29,27 +29,26 @@ class FIRFilter(Filter):
 
 class IIRFilter(Filter):
     def __init__(self, size, alpha):
-        assert(len(alpha) == (size))
+        # assert(len(alpha) == (size))
         super().__init__(size)
         self.alpha = alpha
 
-    def get_filtered_position(self):
-        p_x = np.sum(self.alpha * self.positions[:, 0])
-        p_y = np.sum(self.alpha * self.positions[:, 1])
+    def get_filtered_position(self, centroid):
+        p_x = (self.alpha/self.filter_size) * np.sum(self.positions[:, 0]) + (1-self.alpha)*centroid[0]
+        p_y = (self.alpha/self.filter_size) * np.sum(self.positions[:, 1])  + (1-self.alpha)*centroid[1]
         return np.array([p_x, p_y])
 
 class HandTracker():
-    def __init__(self, camera, buf_size, filter, alpha=None):
-        self.handSeg = HandSegmetation(camera, testMorphology=False)
+    def __init__(self, camera, buf_size, filter, alpha=0.7):
+        self.handSeg = HandSegmetation(camera, testMorphology=True)
         self.hand = Hand() # average 5 most recent positions
         self.prev_hand = Hand()
         self.cam = camera
         self.found = 0 # if we know where the hand is
         self.expansion_const = 35 # how much to expand ROI
-        self.area_filt_thresh = 75000
-        if alpha == None:
-            alpha = 1/buf_size * np.ones(buf_size)
+        self.area_filt_thresh = 1000000
 
+        self.filt_type = filter
         assert(filter in ["IIR", "FIR"])
         if filter == "IIR":
             self.filter = IIRFilter(buf_size, alpha)
@@ -98,6 +97,7 @@ class HandTracker():
                     out_count += 1
                 # cv2.line(color_frame,start,end,[0,255,0],2)
                 cv2.circle(color_frame,far,5,[0,0,255],-1)
+                print("Count: {}".format(out_count))
 
             if (out_count >= 5) and (contArea > self.area_threshold): # thresholds for hand being found
                 # Get bounding region
@@ -155,11 +155,15 @@ class HandTracker():
             centroid[0] += box[0]
             centroid[1] += box[1]
 
-            # push new centroid onto the stack
-            self.filter.insert_point(centroid)
-
             # set state of our new hand
-            self.hand.set_state(rect, self.filter.get_filtered_position(), rect_area, np.array([0, 0]), time.time())
+            if self.filt_type == "IIR":
+                # push new centroid onto the stack
+                self.filter.insert_point(self.prev_hand.centroid)
+                self.hand.set_state(rect, self.filter.get_filtered_position(centroid), rect_area, np.array([0, 0]), time.time())
+            else:
+                # push new centroid onto the stack
+                self.filter.insert_point(centroid)
+                self.hand.set_state(rect, self.filter.get_filtered_position(centroid), rect_area, np.array([0, 0]), time.time())
 
             # draw ROI bounding box and boundinng box for the hand
             cv2.rectangle(frame, (int(box[0]), int(box[1])), \
@@ -187,9 +191,9 @@ class HandTracker():
         # transform to corner locations
         corners[2] = corners[0] + corners[2]
         corners[3] = corners[1] + corners[3]
-        velocity = (self.filter.positions[-1, :] - self.filter.positions[-2, :])
-        corners[0:2] = velocity + corners[0:2] # self.prev_hand.velocity*(1/20)
-        corners[2:] = velocity + corners[2:]
+        velocity = self.prev_hand.velocity * (1/20) # (self.filter.positions[-1, :] - self.filter.positions[-2, :])
+        corners[0:2] = -velocity + corners[0:2] # self.prev_hand.velocity*(1/20)
+        corners[2:] = -velocity + corners[2:]
 
         # expand the box size a constant amount
         corners[0:2] -= self.expansion_const
@@ -215,6 +219,7 @@ class HandTracker():
             self.vel_x = self.hand.velocity[0]
             self.vel_y = self.hand.velocity[1]
         else:
+            print("Setting vel to zero")
             self.vel_x = 0
             self.vel_y = 0
         self.prev_hand.set_prev_state(self.hand)
