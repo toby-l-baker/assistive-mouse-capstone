@@ -18,11 +18,11 @@ class Hand():
         self.timestamp = timestamp
 
     def set_prev_state(self, hand):
-        self.centroid = hand.centroid
-        self.rectangle = hand.rectangle
-        self.area = hand.area
-        self.velocity = hand.velocity
-        self.timestamp = hand.timestamp
+        self.centroid = hand.centroid.copy()
+        self.rectangle = hand.rectangle.copy()
+        self.area = hand.area.copy()
+        self.velocity = hand.velocity.copy()
+        self.timestamp = hand.timestamp.copy()
 
     def update_velocity(self, old_state):
         dt = (self.timestamp - old_state.timestamp)
@@ -56,7 +56,7 @@ class HandSegmetation():
         self.erosionIterations = 2
         self.colorThresh = 50
         self.areaThreshold = 0
-        self.alpha = 0
+        self.alpha = 0.01
         assert(self.alpha < 1 and self.alpha >= 0)
 
         self.testMorphology = testMorphology
@@ -112,17 +112,13 @@ class HandSegmetation():
         hand_hist = cv2.calcHist([roi], [0, 1], None, [12, 15], [0, 180, 0, 256])
         return cv2.normalize(hand_hist, hand_hist, 0, 255, cv2.NORM_MINMAX)
 
-    def adapt_histogram(self, box, frame):
-        hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        roi = np.zeros([self.rect_size, self.rect_size, 3], dtype=hsv_frame.dtype) #region of interest
+    def adapt_histogram(self, sample):
+        roi = cv2.cvtColor(sample, cv2.COLOR_BGR2HSV)
 
-        roi = hsv_frame[box[0]:box[0] + self.rect_size, box[1]:box[1] + self.rect_size]
         hand_hist_new = cv2.calcHist([roi], [0, 1], None, [12, 15], [0, 180, 0, 256])
         hand_hist_new = cv2.normalize(hand_hist_new, hand_hist_new, 0, 255, cv2.NORM_MINMAX)
         self.hand_hist = hand_hist_new * self.alpha + (1-self.alpha) * self.hand_hist
-        cv2.rectangle(frame, (int(box[0]), int(box[1])), \
-              (int(box[0]+self.rect_size), int(box[1]+self.rect_size)), \
-               [0, 255, 0], 2)
+
 
     def updateIterationsCallback(self, _):
         self.dilationIterations = cv2.getTrackbarPos("dilate_iterations", "MorphologyTest")

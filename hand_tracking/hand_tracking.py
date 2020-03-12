@@ -46,6 +46,7 @@ class HandTracker():
         self.cam = camera
         self.found = 0 # if we know where the hand is
         self.expansion_const = 35 # how much to expand ROI
+        self.area_filt_thresh = 75000
         if alpha == None:
             alpha = 1/buf_size * np.ones(buf_size)
 
@@ -134,11 +135,8 @@ class HandTracker():
         if len(conts) == 0: # bye bye
             self.found = 0
         else: # multiple objects - get largest
-            try:
-                maxI = np.where(areas, np.amax(areas))
-            except Exception as e:
-                maxI = 0
-
+            maxI = np.where(areas == np.amax(areas))[0]
+            maxI = maxI[0]
             rect_area = areas[maxI]
             cont = conts[maxI]
 
@@ -146,7 +144,7 @@ class HandTracker():
             rect = np.array(cv2.boundingRect(cont))
 
             # need to do a coordinate shift as only searching roi
-            rect[0] += box[0]
+            rect[0] += box[0] # rect in global coords
             rect[1] += box[1]
 
             # get centroid
@@ -167,9 +165,15 @@ class HandTracker():
             cv2.rectangle(frame, (int(box[0]), int(box[1])), \
                   (int(box[2]), int(box[3])), \
                    [0, 0, 255], 2)
-            self.handSeg.adapt_histogram([int(rect[0]+rect[2]/3), int(rect[1]+rect[3]/3)], frame) # pass in lower left corner and frame
+            rows = int(1/3*(rect[3])) + (rect[1] - box[1]) # 1/3 of height of bounding box + pos of bounding box in ROI
+            cols = int(1/3*(rect[2])) + (rect[0] - box[0])# 1/3 of width of bounding box
+            hand_sample = roi[rows:rows+50, cols:cols+50, :]
+            self.handSeg.adapt_histogram(hand_sample) # pass in lower left corner and frame
             cv2.rectangle(frame, (int(rect[0]), int(rect[1])), \
                   (int(rect[0]+rect[2]), int(rect[1]+rect[3])), \
+                   [0, 255, 0], 2)
+            cv2.rectangle(frame, (int(cols+box[0]), int(rows+box[1])), \
+                  (int(cols+box[0]+50), int(rows+box[1]+50)), \
                    [0, 255, 0], 2)
 
     """Based on our hands previous position, velocity and box size define a
@@ -183,9 +187,9 @@ class HandTracker():
         # transform to corner locations
         corners[2] = corners[0] + corners[2]
         corners[3] = corners[1] + corners[3]
-        # velocity = (self.filter.positions[-1, :] - self.filter.positions[-2, :])
-        corners[0:2] = self.prev_hand.velocity*(1/20) + corners[0:2] # self.prev_hand.velocity*(1/20)
-        corners[2:] = self.prev_hand.velocity*(1/20) + corners[2:]
+        velocity = (self.filter.positions[-1, :] - self.filter.positions[-2, :])
+        corners[0:2] = velocity + corners[0:2] # self.prev_hand.velocity*(1/20)
+        corners[2:] = velocity + corners[2:]
 
         # expand the box size a constant amount
         corners[0:2] -= self.expansion_const
@@ -203,9 +207,17 @@ class HandTracker():
     def get_velocity(self, frame):
         self.update_position(frame)
         self.hand.update_velocity(self.prev_hand)
+        # get differences before we set the new state
+        dt = self.hand.timestamp - self.prev_hand.timestamp
+        darea = abs(self.hand.area - self.prev_hand.area)
+
+        if darea/dt < self.area_filt_thresh:
+            self.vel_x = self.hand.velocity[0]
+            self.vel_y = self.hand.velocity[1]
+        else:
+            self.vel_x = 0
+            self.vel_y = 0
         self.prev_hand.set_prev_state(self.hand)
-        self.vel_x = self.hand.velocity[0]
-        self.vel_y = self.hand.velocity[1]
 
 def parse_args():
     # construct the argument parse and parse the arguments
