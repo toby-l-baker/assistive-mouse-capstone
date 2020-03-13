@@ -4,17 +4,27 @@ import sys
 import socket
 
 
-IP = "localhost"
-PORT = 7777
-
-
 def main(args):
+    if len(args) != 3:
+        print("Usage: address port")
+        exit()
+    
+    address = args[1]
+    port = int(args[2])
+
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind((IP, PORT))
+    sock.bind((address, port))
 
     while True:
         data, addr = sock.recvfrom(1024)
-        print("received message: " + str(data.decode()))
+    
+        keypoints = data.decode().strip(';').split(';')
+
+        for keypoint in keypoints:
+            x, y, z = [float(i) for i in keypoint.strip(',').split(',')]
+            print(str((x, y, z)))
+
+        print('--------------')
 
 
 if __name__ == "__main__":
