@@ -13,8 +13,8 @@ from Unsupervised import generateTrain, keypointsToFeatures
 from DLNN import DataSet
 
 
-IP = 'localhost'    # IP address for UDP connection
-PORT = 5000         # port number for UDP connection
+IP = 'localhost'    # IP address of MediaPipe UDP client
+PORT = 2000         # port number of MediaPipe UDP client
 MAX_BYTES = 1024    # maximum number of bytes to read over UDP
 
 
@@ -85,19 +85,22 @@ def main(args):
         # predict gesture
         if supervised is True:
             DataSet.normalize(features, train.mean, train.std)
-            gesture = np.argmax(model.predict(features))
+            output = model.predict(features)[0]
+            gesture = np.argmax(output)
+            confidence = " ({0:.2f}%)".format(output[gesture] * 100)
         else:
             gesture = model.predict(features)[0]
+            confidence = ""
 
         # display gesture
         if gesture == 0:
-            print('CLOSED')
+            print("CLOSED" + confidence)
         elif gesture == 1:
-            print('OK')
+            print("OK" + confidence)
         elif gesture == 2:
-            print('OPEN')
+            print("OPEN" + confidence)
         else:
-            print('UNKNOWN')
+            print("UNKNOWN")
 
 
 if __name__ == "__main__":
