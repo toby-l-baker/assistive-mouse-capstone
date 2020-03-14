@@ -18,6 +18,55 @@ PORT = 2000         # port number of MediaPipe UDP client
 MAX_BYTES = 1024    # maximum number of bytes to read over UDP
 
 
+def green(string):
+    return "\033[92m{}\033[00m".format(string)
+
+def yellow(string):
+    return "\033[93m{}\033[00m".format(string)
+
+def red(string):
+    return "\033[91m{}\033[00m".format(string)
+            
+def display(gesture, output, supervised, valid=True):
+    if supervised is True:
+        if valid is True:
+            if output[gesture] > 0.95:
+                # high accuracy
+                color = green
+            elif output[gesture] > 0.75:
+                # medium accuracy
+                color = yellow
+            else:
+                # low accuracy
+                color = red
+
+            if gesture == 0:
+                # CLOSED
+                string = "OPEN ({2:.4f}) | {3} ({0:.4f}) | OK ({1:.4f})".format(output[0], output[1], output[2], color("CLOSED"))
+            elif gesture == 1:
+                # OK
+                string = "OPEN ({2:.4f}) | CLOSED ({0:.4f}) | {3} ({1:.4f})".format(output[0], output[1], output[2], color("OK"))
+            elif gesture == 2:
+                # OPEN
+                string = "{3} ({2:.4f}) | CLOSED ({0:.4f}) | OK ({1:.4f})".format(output[0], output[1], output[2], color("OPEN"))
+            else:
+                # UNKNOWN
+                string = "OPEN ({2:.4f}) | CLOSED ({0:.4f}) | OK ({1:.4f})".format(output[0], output[1], output[2])
+        else:
+            string = "OPEN ({2:.4f}) | CLOSED ({0:.4f}) | OK ({1:.4f})".format(0, 0, 0)
+        
+        print(string, end='\r')
+    else:
+        if valid is True:
+            if gesture == 0:
+                print("CLOSED")
+            elif gesture == 1:
+                print("OK")
+            elif gesture == 2:
+                print("OPEN")
+            else:
+                print("UNKNOWN")
+
 def main(args):
     # check for correct arguments
     if not (2 <= len(args) <= 3):
@@ -80,27 +129,24 @@ def main(args):
         
         # check if features are valid
         if np.isnan(np.sum(features)):
+            display(-1, None, supervised, valid=False)
             continue
-
-        # predict gesture
+        
         if supervised is True:
+
+            # predict gesture
             DataSet.normalize(features, train.mean, train.std)
             output = model.predict(features)[0]
             gesture = np.argmax(output)
-            confidence = " ({0:.2f}%)".format(output[gesture] * 100)
-        else:
-            gesture = model.predict(features)[0]
-            confidence = ""
 
-        # display gesture
-        if gesture == 0:
-            print("CLOSED" + confidence)
-        elif gesture == 1:
-            print("OK" + confidence)
-        elif gesture == 2:
-            print("OPEN" + confidence)
+            # display gesture
+            display(gesture, output, supervised, valid=True)
         else:
-            print("UNKNOWN")
+            # predict gesture
+            gesture = model.predict(features)[0]
+            
+            # display gesture
+            display(gesture, None, supervised, valid=True)
 
 
 if __name__ == "__main__":
