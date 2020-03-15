@@ -13,7 +13,7 @@ from Unsupervised import generateTrain
 
 
 DATA_SPLIT = 0.75   # split percentage for training vs. testing data
-K = 4               # number of folds to process for validation
+K = 0               # number of folds to process for validation
 EPOCHS = 100        # number of epochs to train the model
 BATCH_SIZE = 16     # training data batch size
 
@@ -114,28 +114,28 @@ def main(args):
 
     # check for correct arguments
     if len(args) != 2:
-        print("Usage: python DLNN.py file")
+        print("Usage: python DLNN.py data")
         exit()
 
     # process file
-    with open(sys.argv[1], 'r') as file:
-        data, labels = generateTrain(file)
+    with open(args[1], 'r') as f:
+        data, labels = generateTrain(f)
 
     # shuffle data
     data, labels = shuffle(data, labels)
 
-    samples = data.shape[0]
-    split = int(samples * DATA_SPLIT)
-
-    # format training data
-    train = DataSet(data[:split], labels[:split])
-    DataSet.normalize(train.data, train.mean, train.std)
-
-    # format testing data
-    test = DataSet(data[split:], labels[split:])
-    DataSet.normalize(test.data, train.mean, train.std)
-
     if K > 0:
+        samples = data.shape[0]
+        split = int(samples * DATA_SPLIT)
+
+        # format training data
+        train = DataSet(data[:split], labels[:split])
+        DataSet.normalize(train.data, train.mean, train.std)
+
+        # format testing data
+        test = DataSet(data[split:], labels[split:])
+        DataSet.normalize(test.data, train.mean, train.std)
+        
         # perform K-fold cross-validation
         scores = k_fold_cross_validation(train.data, train.labels, K, EPOCHS, BATCH_SIZE)
 
@@ -165,25 +165,20 @@ def main(args):
               + " - val_acc: {:0.4f} (epoch {:d})".format(best[3][1], best[3][0]))
 
         # visualize training
-        print("")
-        build_model(train.data.shape[1], train.labels.shape[1], summary=True)
         plot(np.arange(EPOCHS), average[0], average[1], average[2], average[3])
     else:
+        # format training data
+        train = DataSet(data, labels)
+        DataSet.normalize(train.data, train.mean, train.std)
+
         # build model
-        model = build_model(train.data.shape[1], train.labels.shape[1])
+        model = build_model(train.data.shape[1], train.labels.shape[1], summary=True)
 
         # train model
         model.fit(train.data, train.labels, epochs=EPOCHS, batch_size=BATCH_SIZE, verbose=0)
 
-        # test Model
-        test.labels = np.reshape(model.predict(test.data), (test.data.shape[0],))
-
-        # output header
-        print("Features,Gesture")
-
-        # output results
-        for i in range(len(test.ids)):
-            print(str(test.ids[i]) + "," + str(int(round(test.labels[i]))))
+        # save model
+        model.save('DLNN.h5')
 
 
 if __name__ == "__main__":
