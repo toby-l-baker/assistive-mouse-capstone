@@ -4,7 +4,7 @@ Title: Camera Mouse
 Date Created: 28/NOV/2019
 """
 
-import keyboard
+import keyboard, time
 from enum import Enum
 
 class Gestures(Enum):
@@ -30,13 +30,15 @@ class KeyboardGestureRecognition(GestureRecognition):
         super().__init__()
         self.pressed = {"a": False, "s": False, "d": False, "o": False} # a: click, s:d_click, d: r_click
         keyboard.hook(self.update)
+        self.i = 0
 
     def update(self, event):
         #print(event.event_type)
+        self.i += 1
         if event.name == "s":
             if event.event_type == "down":
                 if self.pressed[event.name]:
-                    self.gesture = Gestures.null
+                    self.gesture = Gestures.null # debouncing
                     return
                 # set state of key to pressed
                 self.pressed[event.name] = True

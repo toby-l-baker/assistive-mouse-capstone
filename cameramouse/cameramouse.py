@@ -12,6 +12,7 @@ import numpy as np
 import cv2, sys, argparse
 sys.path.append('../hand_tracking')
 from hand_tracking import HandTracker
+import win32api
 
 class CameraMouse():
     def __init__(self):
@@ -33,26 +34,36 @@ class CameraMouse():
         if self.gesture_recognition.gesture == Gestures.out_of_range:
             return
         else:
-            dx, dy = self.velocity_map()
+            x, y = 0, 0
+            dx, dy = 0, 0
+            if self.control == "vel":
+                dx, dy = self.velocity_map()
+                cx, cy = win32api.GetCursorPos()
+                x, y = cx+dx, cy+dy
+            elif self.control == "abs":
+                x, y = self.position_map()
+                cx, cy = win32api.GetCursorPos()
+                dx, dy = x - cx, y - cy
             if self.gesture_recognition.gesture == Gestures.drag:
                 if self.mouse.state == "UP":
                     self.mouse.mouse_down()
                     self.mouse.state = "DOWN"
                 else:
-                    self.mouse.moveD(dx, dy)
+                    self.mouse.moveD(dx, dy) # needs to use differences
                     pass
             else:
                 if self.mouse.state == "DOWN":
                     self.mouse.mouse_up()
                     self.mouse.state = "UP"
                 if self.gesture_recognition.gesture == Gestures.click:
-                    self.mouse.left_click(dx, dy)
+                    self.mouse.left_click(x, y)
                 elif self.gesture_recognition.gesture == Gestures.double_click:
-                    self.mouse.double_click(dx, dy)
+                    self.mouse.double_click(x, y)
                 elif self.gesture_recognition.gesture == Gestures.right_click:
-                    self.mouse.right_click(dx, dy)
+                    self.mouse.right_click(x, y)
                 else:
-                    self.mouse.move(dx, dy)
+                    # print("MOVING TO {} {}".format(x, y))
+                    self.mouse.move(x, y)
 
 class OpticalFlowMouse(CameraMouse):
     def __init__(self, camera):
@@ -80,16 +91,22 @@ class OpticalFlowMouse(CameraMouse):
                 break
 
 class HandSegmentationMouse(CameraMouse):
-    def __init__(self, camera, filter, filter_size):
+    def __init__(self, camera, filter, filter_size, control):
         self.camera = camera
         self.monitor = WindowsMonitor()
         self.mouse = WindowsMouse()
+        self.x_ratio = self.monitor.width / 1000 #(self.camera.width)
+        self.y_ratio = self.monitor.height / 500 #(self.camera.height)
+        print("X Ratio {}, Y Ratio {}".format(self.x_ratio, self.y_ratio))
         self.gesture_recognition = KeyboardGestureRecognition()
         self.tracker = HandTracker(camera, filter_size, filter, alpha=0.5)
-        self.lin_term = 1/60
-        self.quad_term = 1/15000
+        self.lin_term = 1/100
+        self.quad_term = 1/20000
         self.lin_sens = 5
         self.quad_sens = 5
+        assert(control in ["vel", "abs",  "hybrid"])
+        self.control = control
+        self.last_gesture_update = 0
 
     def updateSens(self, _):
         self.lin_sens = cv2.getTrackbarPos("lin term", "FeedMe")
@@ -113,8 +130,18 @@ class HandSegmentationMouse(CameraMouse):
                     flag = False
                 self.tracker.global_recognition(color_frame)
             else: # found the hand lets track it
-                self.tracker.get_velocity(color_frame)
+                if self.control == "vel":
+                    self.tracker.get_velocity(color_frame)
+                elif self.control == "abs":
+                    self.tracker.get_position(color_frame)
+                # Make sure we aren't doubling down on the same action
+                if self.last_gesture_update < self.gesture_recognition.i:
+                    self.last_gesture_update = self.gesture_recognition.i
+                elif self.last_gesture_update == self.gesture_recognition.i and not (self.gesture_recognition.gesture == Gestures.drag):
+                    self.gesture_recognition.gesture = Gestures.null
+
                 self.execute_control()
+
                 flag = True
 
             cv2.imshow("FeedMe", color_frame)
@@ -133,3 +160,16 @@ class HandSegmentationMouse(CameraMouse):
         ret_x = int(self.tracker.vel_x * get_gain(self.tracker.vel_x))
         ret_y = int(self.tracker.vel_y * get_gain(self.tracker.vel_y))
         return ret_x, ret_y
+
+    def position_map(self):
+        def remap(x, y):
+            # coordinate shift to new origin at (140, 100)
+            x -= 140
+            y -= 100
+            x = np.clip(x, 0, 1000)
+            y = np.clip(y, 0, 500)
+            return x, y
+        x_map, y_map = remap(self.tracker.pos_x, self.tracker.pos_y)
+        x_cam = self.x_ratio * x_map
+        y_cam = self.y_ratio * y_map
+        return [int(self.monitor.width-x_cam), int(self.monitor.height-y_cam)] # accounts for camera facing down

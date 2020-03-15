@@ -22,7 +22,7 @@ class FIRFilter(Filter):
         super().__init__(size)
 
     """Returns the averaged position of our x most recent detections"""
-    def get_filtered_position(self):
+    def get_filtered_position(self, _):
         p_x = np.average(self.positions[:, 0])
         p_y = np.average(self.positions[:, 1])
         return np.array([int(p_x), int(p_y)])
@@ -223,6 +223,15 @@ class HandTracker():
             self.vel_x = 0
             self.vel_y = 0
         self.prev_hand.set_prev_state(self.hand)
+
+    """Get the velocity of our hand based off of previous detections"""
+    def get_position(self, frame):
+        self.update_position(frame)
+        self.hand.update_velocity(self.prev_hand)
+        self.pos_x = self.hand.centroid[0]
+        self.pos_y = self.hand.centroid[1]
+        self.prev_hand.set_prev_state(self.hand)
+        # print("HAND IS AT {} {}".format(self.pos_x, self.pos_y))
 
 def parse_args():
     # construct the argument parse and parse the arguments
