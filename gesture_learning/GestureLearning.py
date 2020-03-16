@@ -133,7 +133,6 @@ def main(args):
             continue
         
         if supervised is True:
-
             # predict gesture
             DataSet.normalize(features, train.mean, train.std)
             output = model.predict(features)[0]
