@@ -22,8 +22,8 @@ def plotValidation(X, y, title, xlabel, ylabel, filename):
 def tSNE(train, label, filename, k=None):
     '''
     What is t-SNE? And how it work?
-    t-SNE [1] is a tool to visualize high-dimensional data. 
-    It converts similarities between data points to joint probabilities and tries to minimize the Kullback-Leibler divergence 
+    t-SNE [1] is a tool to visualize high-dimensional data.
+    It converts similarities between data points to joint probabilities and tries to minimize the Kullback-Leibler divergence
     between the joint probabilities of the low-dimensional embedding and the high-dimensional data
     '''
     # embedded = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=250).fit_transform(train)
@@ -44,6 +44,15 @@ def tSNE(train, label, filename, k=None):
     )
     snsplt.get_figure().savefig(filename)
 
+def translateKeypoints(keypoints):
+    invariantKeypointsXY = np.zeros(keypoints.shape)
+    invariantKeypoints = np.zeros(keypoints.shape)
+    invariantKeypointsXY[1:, :] = keypoints[1:, :] - keypoints[0, :] # get x, y of all points w.r.t. the palm
+    for i in range(1, len(invariantKeypoints)):
+        invariantKeypoints[i, 0] = np.sqrt(invariantKeypointsXY[i, 0]**2 + invariantKeypointsXY[i, 1]**2) # get r
+        invariantKeypoints[i, 1] = np.atan2(invariantKeypointsXY[i, 1], invariantKeypointsXY[i, 0]) #get theta value
+    return invariantKeypoints
+
 '''
 This function will convert a set of keypoints to a set of features.
 
@@ -62,17 +71,17 @@ def keypointsToFeatures(keypoints):
             ratio = np.sqrt(numerator) / np.sqrt(denominator)
             features[i*3 + j] = ratio
             # features[i*3 + j] = ratio * 10  # 10 times to make more spearable?
-    
+
     # finger number feature
     for i in range(len(features)):
         features[15] = sum(features[3 : 15 : 4] <= 1) * 10  # stretch finger number, weighted by 10
-    
+
     # angle features
     for i in range(4):  # four pairs
         x1 = np.array([keypoints[8*(i+1) - 1] - keypoints[0], keypoints[8*(i+1)] - keypoints[1]], dtype=np.float32).T
         x2 = np.array([keypoints[8*(i+2) - 1] - keypoints[0], keypoints[8*(i+2)] - keypoints[1]], dtype=np.float32).T
         cos = np.sum(x1*x2) / (np.sqrt(np.sum(x1**2)) * np.sqrt(np.sum(x2**2)))  # caculate cos(theta)
-        
+
         # when zero angle, it is possible
         if cos > 1:
             cos = 1
@@ -91,7 +100,7 @@ Raw data:
 Each line is corresponding to one image.
 Each line has 21x2 numbers, which indicates (x, y) of 21 joint locations. Note that these are joint CENTRE locations.
 Note that (x, y) are already normalized by the palm key point.
-The order of 16 joints is Palm, Thumb root, Thumb mid1, Thumb mid2, Thumb tip, Index root, Thumb mid1, Thumb mid2, Index tip, 
+The order of 16 joints is Palm, Thumb root, Thumb mid1, Thumb mid2, Thumb tip, Index root, Thumb mid1, Thumb mid2, Index tip,
 Middle root, Middle mid1, Middle mid2, Middle tip, Ring root, Ring mid1, Ring mid2, Ring tip, Pinky root, Pinky mid1, Pinky mid2, Pinky tip.
 
 Revised data:
@@ -166,7 +175,7 @@ def K_means_validation(train, min, max):
     plotValidation(range(min, max+1), chIndex, "K_means validation", "K", "Calinski-Harabasz Index", "/Users/sean/GestureLearning/K_means_ch_validation")
     plotValidation(range(min, max+1), dbIndex, "K_means validation", "K", "Davies-Bouldin Index", "/Users/sean/GestureLearning/K_means_db_validation")
     plotValidation(range(min, max+1), siScode, "K_means validation", "K", "Silhouette Coefficient score", "/Users/sean/GestureLearning/K_means_si_validation")
-    
+
     # return Calinski-Harabasz Index array
     return chIndex
 
@@ -209,7 +218,7 @@ def EM_validation(train, min, max):
     plotValidation(range(min, max+1), chIndex, "EM validation", "K", "Calinski-Harabasz Index", "/Users/sean/GestureLearning/EM_ch_validation")
     plotValidation(range(min, max+1), dbIndex, "EM validation", "K", "Davies-Bouldin Index", "/Users/sean/GestureLearning/EM_db_validation")
     plotValidation(range(min, max+1), siScode, "EM validation", "K", "Silhouette Coefficient score", "/Users/sean/GestureLearning/EM_si_validation")
-    
+
     # return Calinski-Harabasz Index array
     return chIndex
 
@@ -221,7 +230,7 @@ def EM_train(train, label, filename, k=None):
     # print(chIndex)
     # use the best K to build the model
     # bestK = chIndex.index(max(chIndex))+3
-    # print(bestK); 
+    # print(bestK);
     gmm = GaussianMixture(n_components=k, covariance_type='spherical', init_params='kmeans', max_iter=250)  # 'spherical', 'diag', 'tied', 'full'
     gmm.fit(train)
     prediction = gmm.predict(train)
