@@ -1,1 +1,10 @@
 **/__pycache__/
+mediapipe/bazel-bin
+mediapipe/bazel-genfiles
+mediapipe/bazel-mediapipe-ioss
+mediapipe/bazel-out
+mediapipe/bazel-testlogs
+mediapipe/bazel-mediapipe
+mediapipe/mediapipe/provisioning_profile.mobileprovision
+mediapipe/mediapipe/MediaPipe.xcodeproj
+mediapipe/mediapipe/MediaPipe.tulsiproj/*.tulsiconf-user
