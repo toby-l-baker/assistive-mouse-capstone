@@ -99,11 +99,11 @@ class HandSegmentationMouse(CameraMouse):
         self.y_ratio = self.monitor.height / 500 #(self.camera.height)
         print("X Ratio {}, Y Ratio {}".format(self.x_ratio, self.y_ratio))
         self.gesture_recognition = KeyboardGestureRecognition()
-        self.tracker = HandTracker(camera, filter_size, filter, alpha=0.5)
+        self.tracker = HandTracker(camera, filter_size, filter, alpha=0.7)
         self.lin_term = 1/100
         self.quad_term = 1/20000
-        self.lin_sens = 5
-        self.quad_sens = 5
+        self.lin_sens = 7
+        self.quad_sens = 4
         assert(control in ["vel", "abs",  "hybrid"])
         self.control = control
         self.last_gesture_update = 0
@@ -117,9 +117,9 @@ class HandSegmentationMouse(CameraMouse):
         flag = False
         cv2.namedWindow("FeedMe")
         cv2.createTrackbar("quad term", "FeedMe", \
-          self.lin_sens, 10, self.updateSens)
-        cv2.createTrackbar("lin term", "FeedMe", \
           self.quad_sens, 10, self.updateSens)
+        cv2.createTrackbar("lin term", "FeedMe", \
+          self.lin_sens, 10, self.updateSens)
         while True:
             # grab frames
             gray_frame, color_frame = self.camera.capture_frames()

@@ -12,7 +12,7 @@ ap.add_argument("-filt", "--filter", type=str, required=True,
 	help="Options: FIR, IIR")
 ap.add_argument("-filt_size", "--filter_size", type=int, required=True,
 	help="Options: some integer")
-ap.add_argument("-src", "--src", type=int, default=0,
+ap.add_argument("-src", "--source", type=int, default=0,
 	help="src number of camera input")
 ap.add_argument("-control", "--control", type=str, default="vel",
 	help="type of cursor control: abs, vel, hybrid")
@@ -21,7 +21,8 @@ args = ap.parse_args()
 if args.camera == "realsense":
     camera = RealSenseCamera()
 elif args.camera == "webcam":
-    camera = WebcamCamera(args.src)
+    print("Camera Feed {}".format(args.source))
+    camera = WebcamCamera(args.source)
 else:
     raise NameError("Invalid camera type, must me realsense or webcam")
 

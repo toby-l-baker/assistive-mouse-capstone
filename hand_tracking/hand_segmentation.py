@@ -90,7 +90,7 @@ class HandSegmetation():
 
         cv2.destroyWindow("CalibrationFeed")
 
-    def createRectangles(self, rect_size=100):
+    def createRectangles(self, rect_size=50):
         rows, cols, _ = self.color_frame.shape
         self.rect_size = rect_size
         self.hand_rect_one_x = int(9 * rows / 20)
@@ -127,6 +127,7 @@ class HandSegmetation():
 
     def getOnlyObjects(self, frame):
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        self.blur = cv2.GaussianBlur(self.color_frame, self.blurKernel, 0)
         dst = cv2.calcBackProject([hsv], [0, 1], self.hand_hist, [0, 180, 0, 256], 1)
 
         disc = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))

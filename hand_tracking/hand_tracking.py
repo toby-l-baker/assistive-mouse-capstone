@@ -34,8 +34,9 @@ class IIRFilter(Filter):
         self.alpha = alpha
 
     def get_filtered_position(self, centroid):
-        p_x = (self.alpha/self.filter_size) * np.sum(self.positions[:, 0]) + (1-self.alpha)*centroid[0]
-        p_y = (self.alpha/self.filter_size) * np.sum(self.positions[:, 1])  + (1-self.alpha)*centroid[1]
+        frac = self.alpha/self.filter_size
+        p_x = np.sum(frac*self.positions[:, 0]) + (1-self.alpha)*centroid[0]
+        p_y =  np.sum(frac*self.positions[:, 1])  + (1-self.alpha)*centroid[1]
         return np.array([p_x, p_y])
 
 class HandTracker():
@@ -45,7 +46,7 @@ class HandTracker():
         self.prev_hand = Hand()
         self.cam = camera
         self.found = 0 # if we know where the hand is
-        self.expansion_const = 35 # how much to expand ROI
+        self.expansion_const = 50 # how much to expand ROI
         self.area_filt_thresh = 1000000
 
         self.filt_type = filter
@@ -97,7 +98,7 @@ class HandTracker():
                     out_count += 1
                 # cv2.line(color_frame,start,end,[0,255,0],2)
                 cv2.circle(color_frame,far,5,[0,0,255],-1)
-                print("Count: {}".format(out_count))
+                # print("Count: {}".format(out_count))
 
             if (out_count >= 5) and (contArea > self.area_threshold): # thresholds for hand being found
                 # Get bounding region
@@ -169,15 +170,15 @@ class HandTracker():
             cv2.rectangle(frame, (int(box[0]), int(box[1])), \
                   (int(box[2]), int(box[3])), \
                    [0, 0, 255], 2)
-            rows = int(1/3*(rect[3])) + (rect[1] - box[1]) # 1/3 of height of bounding box + pos of bounding box in ROI
-            cols = int(1/3*(rect[2])) + (rect[0] - box[0])# 1/3 of width of bounding box
-            hand_sample = roi[rows:rows+50, cols:cols+50, :]
+            rows = int(2/5*(rect[3])) + (rect[1] - box[1]) # 1/3 of height of bounding box + pos of bounding box in ROI
+            cols = int(2/5*(rect[2])) + (rect[0] - box[0])# 1/3 of width of bounding box
+            hand_sample = roi[rows:rows+30, cols:cols+30, :]
             self.handSeg.adapt_histogram(hand_sample) # pass in lower left corner and frame
             cv2.rectangle(frame, (int(rect[0]), int(rect[1])), \
                   (int(rect[0]+rect[2]), int(rect[1]+rect[3])), \
                    [0, 255, 0], 2)
             cv2.rectangle(frame, (int(cols+box[0]), int(rows+box[1])), \
-                  (int(cols+box[0]+50), int(rows+box[1]+50)), \
+                  (int(cols+box[0]+30), int(rows+box[1]+30)), \
                    [0, 255, 0], 2)
 
     """Based on our hands previous position, velocity and box size define a
