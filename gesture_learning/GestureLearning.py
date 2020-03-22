@@ -7,9 +7,9 @@ Author: Ayusman Saha
 import sys
 import socket
 import numpy as np
+import keypoints as kp
 import joblib
 from keras import models
-from Unsupervised import generateTrain, keypointsToFeatures
 from DLNN import DataSet
 
 
@@ -109,6 +109,25 @@ def main(args):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((IP, PORT))
 
+    
+    while True:
+        data, addr = sock.recvfrom(MAX_BYTES)
+
+        keypoints = kp.decode(data)
+        keypoints = kp.normalize_cartesian(keypoints)
+        
+        if supervised is True:
+            # predict gesture
+            DataSet.normalize(keypoints, train.mean, train.std)
+            output = model.predict(keypoints)[0]
+            gesture = np.argmax(output)
+
+            # display gesture
+            display(gesture, output, supervised, valid=True)
+        else:
+            raise NotImplementedError
+
+    '''
     # initialize array for storing keypoints
     keypoints = np.zeros((21, 3))
 
@@ -146,6 +165,7 @@ def main(args):
             
             # display gesture
             display(gesture, None, supervised, valid=True)
+    '''
 
 
 if __name__ == "__main__":
