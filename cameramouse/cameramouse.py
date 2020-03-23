@@ -4,7 +4,7 @@ Title: Camera Mouse
 Date Created: 28/NOV/2019
 """
 
-from interface import WindowsMouse, WindowsMonitor, Mouse, Monitor
+# from interface import WindowsMouse, WindowsMonitor, WindowsMouse, WindowsMouse
 from camera import RealSenseCamera, WebcamCamera, CameraObject
 from tracker import LukasKanadeResampling
 from gesture_recognition import KeyboardGestureRecognition, GestureRecognition, Gestures
@@ -12,13 +12,17 @@ import numpy as np
 import cv2, sys, argparse
 sys.path.append('../hand_tracking')
 from hand_tracking import HandTracker
-import win32api
+
+try:
+    import win32api
+except:
+    print("Cannot Import win32api")
 
 class CameraMouse():
-    def __init__(self):
-        self.camera = CameraObject(0)
-        self.monitor = Monitor()
-        self.mouse = Mouse()
+    def __init__(self, monitor, mouse, camera):
+        self.camera = camera
+        self.monitor = monitor
+        self.mouse = mouse
         self.gesture_recognition = GestureRecognition()
 
     def run(self):
@@ -38,11 +42,11 @@ class CameraMouse():
             dx, dy = 0, 0
             if self.control == "vel":
                 dx, dy = self.velocity_map()
-                cx, cy = win32api.GetCursorPos()
+                cx, cy = self.mouse.position()
                 x, y = cx+dx, cy+dy
             elif self.control == "abs":
                 x, y = self.position_map()
-                cx, cy = win32api.GetCursorPos()
+                cx, cy = self.mouse.position()
                 dx, dy = x - cx, y - cy
             if self.gesture_recognition.gesture == Gestures.drag:
                 if self.mouse.state == "UP":
@@ -56,48 +60,48 @@ class CameraMouse():
                     self.mouse.mouse_up()
                     self.mouse.state = "UP"
                 if self.gesture_recognition.gesture == Gestures.click:
-                    self.mouse.left_click(x, y)
+                    self.mouse.left_click()
                 elif self.gesture_recognition.gesture == Gestures.double_click:
-                    self.mouse.double_click(x, y)
+                    self.mouse.double_click()
                 elif self.gesture_recognition.gesture == Gestures.right_click:
-                    self.mouse.right_click(x, y)
+                    self.mouse.right_click()
                 else:
                     # print("MOVING TO {} {}".format(x, y))
                     self.mouse.move(x, y)
 
-class OpticalFlowMouse(CameraMouse):
-    def __init__(self, camera):
-        self.camera = camera
-        self.monitor = WindowsMonitor()
-        self.mouse = WindowsMouse()
-        self.gesture_recognition = KeyboardGestureRecognition()
-        self.prev_gray_img, self.color_img = self.camera.capture_frames()
-        tracker_params = dict( winSize  = (15, 15), maxLevel = 2,
-                          criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
-        feature_params = dict(maxCorners = 500, qualityLevel = 0.2,
-                              minDistance = 2, blockSize = 7)
-        self.tracker = LukasKanadeResampling(tracker_params, feature_params, self.camera)
+# class OpticalFlowMouse(CameraMouse):
+#     def __init__(self, camera):
+#         self.camera = camera
+#         self.monitor = WindowsMonitor()
+#         self.mouse = WindowsMouse()
+#         self.gesture_recognition = KeyboardGestureRecognition()
+#         self.prev_gray_img, self.color_img = self.camera.capture_frames()
+#         tracker_params = dict( winSize  = (15, 15), maxLevel = 2,
+#                           criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
+#         feature_params = dict(maxCorners = 500, qualityLevel = 0.2,
+#                               minDistance = 2, blockSize = 7)
+#         self.tracker = LukasKanadeResampling(tracker_params, feature_params, self.camera)
 
 
-    def run(self):
-        while True:
-            gray_img, color_img = self.camera.capture_frames()
-            self.tracker.update(gray_img, color_img)
-            # self.gesture_recognition.update()
-            self.execute_control()
+#     def run(self):
+#         while True:
+#             gray_img, color_img = self.camera.capture_frames()
+#             self.tracker.update(gray_img, color_img)
+#             # self.gesture_recognition.update()
+#             self.execute_control()
 
-            ch = 0xFF & cv2.waitKey(1)
-            if ch == 27:
-                break
+#             ch = 0xFF & cv2.waitKey(1)
+#             if ch == 27:
+#                 break
 
 class HandSegmentationMouse(CameraMouse):
-    def __init__(self, camera, filter, filter_size, control):
-        self.camera = camera
-        self.monitor = WindowsMonitor()
-        self.mouse = WindowsMouse()
+    def __init__(self, camera, filter, filter_size, control, mouse, monitor):
+        super().__init__(monitor, mouse, camera)
+        # hard coded values for absolute tracking only
         self.x_ratio = self.monitor.width / 1000 #(self.camera.width)
         self.y_ratio = self.monitor.height / 500 #(self.camera.height)
         print("X Ratio {}, Y Ratio {}".format(self.x_ratio, self.y_ratio))
+
         self.gesture_recognition = KeyboardGestureRecognition()
         self.tracker = HandTracker(camera, filter_size, filter, alpha=0.7)
         self.lin_term = 1/100
@@ -152,8 +156,6 @@ class HandSegmentationMouse(CameraMouse):
                 break
 
     def velocity_map(self):
-        # TF: https://www.wolframalpha.com/input/?i=plot+tanh%284*x-2%29+%2B+1
-        # print(self.tracker.vel_x)
         def get_gain(vel):
             return self.lin_term*self.lin_sens + self.quad_term*self.quad_sens*abs(vel)
 
