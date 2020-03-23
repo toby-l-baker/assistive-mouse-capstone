@@ -27,6 +27,8 @@ def red(string):
             
 def display(gesture, output, supervised):
     if supervised is True:
+        string = ""
+
         if output[gesture] > 0.95:
             # high accuracy
             color = green
@@ -38,25 +40,40 @@ def display(gesture, output, supervised):
             color = red
 
         if gesture == 0:
-            # CLOSED
-            string = "OPEN ({2:.4f}) | {4} ({0:.4f}) | OK ({1:.4f}) | CLICK ({3:.4f})".format(output[0], output[1], output[2], output[3], color("CLOSED"))
+            # CLOSE
+            string += color("CLOSE") + " ({0:.4f}) | ".format(output[0])
+            string += "OK ({0:.4f}) | ".format(output[1])
+            string += "OPEN ({0:.4f}) | ".format(output[2])
+            string += "CLICK ({0:.4f})".format(output[3])
         elif gesture == 1:
             # OK
-            string = "OPEN ({2:.4f}) | CLOSED ({0:.4f}) | {4} ({1:.4f}) | CLICK ({3:.4f})".format(output[0], output[1], output[2], output[3], color("OK"))
+            string += "CLOSE ({0:.4f}) | ".format(output[0])
+            string += color("OK") + " ({0:.4f}) | ".format(output[1])
+            string += "OPEN ({0:.4f}) | ".format(output[2])
+            string += "CLICK ({0:.4f})".format(output[3])
         elif gesture == 2:
             # OPEN
-            string = "{4} ({2:.4f}) | CLOSED ({0:.4f}) | OK ({1:.4f}) | CLICK ({3:.4f})".format(output[0], output[1], output[2], output[3], color("OPEN"))
+            string += "CLOSE ({0:.4f}) | ".format(output[0])
+            string += "OK ({0:.4f}) | ".format(output[1])
+            string += color("OPEN") + " ({0:.4f}) | ".format(output[2])
+            string += "CLICK ({0:.4f})".format(output[3])
         elif gesture == 3:
             # CLICK
-            string = "OPEN ({2:.4f}) | CLOSED ({0:.4f}) | OK ({1:.4f}) | {4} ({3:.4f})".format(output[0], output[1], output[2], output[3], color("CLICK"))
+            string += "CLOSE ({0:.4f}) | ".format(output[0])
+            string += "OK ({0:.4f}) | ".format(output[1])
+            string += "OPEN ({0:.4f}) | ".format(output[2])
+            string += color("CLICK") + " ({0:.4f})".format(output[3])
         else:
             # UNKNOWN
-            string = "OPEN ({2:.4f}) | CLOSED ({0:.4f}) | OK ({1:.4f}) | CLICK ({3:.4f})".format(output[0], output[1], output[2], output[3])
+            string += "CLOSE ({0:.4f}) | ".format(output[0])
+            string += "OK ({0:.4f}) | ".format(output[1])
+            string += "OPEN ({0:.4f}) | ".format(output[2])
+            string += "CLICK ({0:.4f})".format(output[3])
         
         print(string, end='\r')
     else:
         if gesture == 0:
-            print("CLOSED")
+            print("CLOSE")
         elif gesture == 1:
             print("OK")
         elif gesture == 2:
@@ -93,12 +110,12 @@ def main(args):
         print("Error: model format not supported")
         exit()
 
-    print("==============================================================")
+    print("=================================================================")
     if supervised is True:
         print("Using supervised model [" + args[1] + "]")
     else:
         print("Using unsupervised model [" + args[1] + "]")
-    print("--------------------------------------------------------------")
+    print("-----------------------------------------------------------------")
 
     # establish UDP connection
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -108,9 +125,9 @@ def main(args):
         # receive data
         data, addr = sock.recvfrom(MAX_BYTES)
 
-        # processes data
+        # process data
         keypoints = kp.decode(data)
-        keypoints = kp.normalize_cartesian(keypoints)[1:, :-1].flatten()
+        keypoints = kp.normalize_polar(keypoints)[1:, :-1].flatten()
         keypoints = keypoints.reshape((1, keypoints.shape[0]))
         keypoints = DataSet.normalize(keypoints, mean, std)
 

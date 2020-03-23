@@ -52,9 +52,10 @@ def plot(epochs, loss, acc, val_loss, val_acc):
 def build_model(inputs, outputs, summary=False):
     model = models.Sequential()
 
-    model.add(layers.Dense(16, activation='relu', input_shape=(inputs,)))
-    model.add(layers.Dense(16, activation='relu'))
-    model.add(layers.Dense(16, activation='relu'))
+    model.add(layers.Dense(32, activation='relu', input_shape=(inputs,)))
+    model.add(layers.Dense(32, activation='relu'))
+    model.add(layers.Dense(32, activation='relu'))
+    model.add(layers.Dense(32, activation='relu'))
     model.add(layers.Dense(outputs, activation='softmax'))
     model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['acc'])
 
@@ -116,7 +117,7 @@ def main(args):
 
     # process file
     with open(args[1], 'r') as f:
-        data, labels = kp.parse(f, normalization='cartesian')
+        data, labels = kp.parse(f, normalization='polar')
 
     # shuffle data
     data, labels = shuffle(data, labels)
@@ -175,13 +176,13 @@ def main(args):
         model.fit(train.data, train.labels, epochs=EPOCHS, batch_size=BATCH_SIZE, verbose=0)
 
         # save model
-        model.save('DLNN.h5')
+        model.save('models/DLNN.h5')
 
         # save data normalization parameters
         mean = train.mean.reshape(1, train.mean.shape[0])
         std = train.std.reshape(1, train.std.shape[0])
         array = np.concatenate((mean, std))
-        np.save('DLNN.npy', array)
+        np.save('models/DLNN.npy', array)
 
 if __name__ == "__main__":
     main(sys.argv)
