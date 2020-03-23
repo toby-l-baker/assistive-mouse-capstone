@@ -20,6 +20,7 @@ class GestureRecognition():
 
     def __init__(self):
         self.gesture = Gestures.null
+        self.i = 0
 
     def update(self):
         pass
@@ -30,7 +31,7 @@ class KeyboardGestureRecognition(GestureRecognition):
         super().__init__()
         self.pressed = {"a": False, "s": False, "d": False, "o": False} # a: click, s:d_click, d: r_click
         keyboard.hook(self.update)
-        self.i = 0
+        # self.i = 0
 
     def update(self, event):
         #print(event.event_type)
