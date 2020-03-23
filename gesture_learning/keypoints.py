@@ -3,6 +3,7 @@ Description: Functions to manipulate MediaPipe keypoints
 Author: Ayusman Saha
 """
 import numpy as np
+import pandas as pd
 
 NUM_KEYPOINTS = 21  # number of keypoints
 
@@ -24,26 +25,49 @@ def rigid_body_transform(point, origin, angle):
 
 # normalizes keypoints in cartesian coordinates
 def normalize_cartesian(keypoints):
-    normalized = np.zeros((NUM_KEYPOINTS, 3))
-    origin = keypoints[0, :-1]
-    fixed = keypoints[9, :-1]
-    theta = angle(fixed - origin) + np.pi/2
+    normalized = np.zeros(keypoints.shape)
 
-    for index, keypoint in enumerate(keypoints):
-        normalized[index, :-1] = rigid_body_transform(keypoint[:-1], origin, theta) * np.array([1, -1])
+    if keypoints.shape == (NUM_KEYPOINTS, 3):
+        origin = keypoints[0, :-1]
+        fixed = keypoints[9, :-1]
+        theta = angle(fixed - origin) + np.pi/2
+
+        for index, keypoint in enumerate(keypoints):
+            normalized[index, :-1] = rigid_body_transform(keypoint[:-1], origin, theta) * np.array([1, -1])
+    elif keypoints.shape == (NUM_KEYPOINTS, 2):
+        origin = keypoints[0]
+        fixed = keypoints[9]
+        theta = angle(fixed - origin) + np.pi/2
+
+        for index, keypoint in enumerate(keypoints):
+            normalized[index] = rigid_body_transform(keypoint, origin, theta) * np.array([1, -1])
+    else:
+        raise ValueError("keypoints array does not have shape (" + str(NUM_KEYPOINTS) + ",3) or (" + str(NUM_KEYPOINTS) + ",2)")
 
     return normalized
 
 # normalizes keypoints in polar coordinates
 def normalize_polar(keypoints):
-    normalized = np.zeros((NUM_KEYPOINTS, 3))
-    origin = keypoints[0, :-1]
-    fixed = keypoints[9, :-1]
-    theta = angle(fixed - origin) + np.pi/2
+    normalized = np.zeros(keypoints.shape)
 
-    for index, keypoint in enumerate(keypoints):
-        vector = keypoint[:-1] - origin
-        normalized[index, :-1] = np.array([length(vector), angle(vector) - theta]) * np.array([1, -1])
+    if keypoints.shape == (NUM_KEYPOINTS, 3):
+        origin = keypoints[0, :-1]
+        fixed = keypoints[9, :-1]
+        theta = angle(fixed - origin) + np.pi/2
+
+        for index, keypoint in enumerate(keypoints):
+            vector = keypoint[:-1] - origin
+            normalized[index, :-1] = np.array([length(vector), angle(vector) - theta]) * np.array([1, -1])
+    elif keypoints.shape == (NUM_KEYPOINTS, 2):
+        origin = keypoints[0]
+        fixed = keypoints[9]
+        theta = angle(fixed - origin) + np.pi/2
+
+        for index, keypoint in enumerate(keypoints):
+            vector = keypoint - origin
+            normalized[index] = np.array([length(vector), angle(vector) - theta]) * np.array([1, -1])
+    else:
+        raise ValueError("keypoints array does not have shape (" + str(NUM_KEYPOINTS) + ",3) or (" + str(NUM_KEYPOINTS) + ",2)")
 
     return normalized
 
@@ -51,9 +75,17 @@ def normalize_polar(keypoints):
 def encode(keypoints):
     data = ""
 
-    for i in range(NUM_KEYPOINTS):
-        x, y, z = keypoints[i]
-        data += str(x) + ',' + str(y) + ',' + str(z) + ';'
+    if keypoints.shape == (NUM_KEYPOINTS, 3):
+        for index, keypoint in enumerate(keypoints):
+            x, y, z = keypoint
+            data += str(x) + ',' + str(y) + ',' + str(z) + ';'
+    elif keypoints.shape == (NUM_KEYPOINTS, 2):
+        for index, keypoint in enumerate(keypoints):
+            x, y = keypoint
+            z = 0.0
+            data += str(x) + ',' + str(y) + ',' + str(z) + ';'
+    else:
+        raise ValueError("keypoints array does not have shape (" + str(NUM_KEYPOINTS) + ",3) or (" + str(NUM_KEYPOINTS) + ",2)")
 
     return data.encode()
 
@@ -63,15 +95,29 @@ def decode(data):
     array = data.decode().strip(';').split(';')
     
     for index, value in enumerate(array):
-        x, y, z = [float(i) for i in value.strip(',').split(',')]
+        x, y, z = [float(num) for num in value.strip(',').split(',')]
         keypoints[index] = (x, y, z)
 
     return keypoints
 
+# parses file made up of lines containing 21 (x,y) keypoints and a label
+def parse(f, normalization=None):
+    raw = np.array(pd.read_csv(f, sep=',', header=None).values[1:])
+    data = raw[:, :-1].astype('float64') 
+    labels = raw[:, -1].astype('int8')
+
+    if normalization == 'cartesian':
+        for index, entry in enumerate(data):
+            entry = entry.reshape(NUM_KEYPOINTS, entry.shape[0]//NUM_KEYPOINTS)
+            data[index] = normalize_cartesian(entry).flatten()
+    elif normalization == 'polar':
+        for index, entry in enumerate(data):
+            entry = entry.reshape(NUM_KEYPOINTS, entry.shape[0]//NUM_KEYPOINTS)
+            data[index] = normalize_polar(entry).flatten()
+
+    return data, labels
+
 # displays keypoints
-def display(keypoints, z=False):
+def display(keypoints):
     for index, keypoint in enumerate(keypoints):
-        if z is False:
-            print("keypoint[" + str(index) + "] = " + str(keypoint[:-1]))
-        else:
-            print("keypoint[" + str(index) + "] = " + str(keypoint))
+        print("keypoint[" + str(index) + "] = " + str(keypoint))

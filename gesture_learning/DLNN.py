@@ -6,28 +6,25 @@ Author: Ayusman Saha
 """
 import sys
 import numpy as np
+import keypoints as kp
 import matplotlib.pyplot as plt
 from keras import models, layers
 from keras.utils import to_categorical
-from Unsupervised import generateTrain
-
 
 DATA_SPLIT = 0.75   # split percentage for training vs. testing data
 K = 0               # number of folds to process for validation
 EPOCHS = 100        # number of epochs to train the model
 BATCH_SIZE = 16     # training data batch size
 
-
 class DataSet:
     def __init__(self, data, labels):
-        self.data = data
+        self.data = data[:, 2:]
         self.labels = to_categorical(labels)
-        self.mean = data.mean(axis=0),
-        self.std = data.std(axis=0)
+        self.mean = self.data.mean(axis=0)
+        self.std = self.data.std(axis=0)
 
     def normalize(data, mean, std):
-        data -= mean
-        data /= std
+        return (data - mean) / std
 
 def plot(epochs, loss, acc, val_loss, val_acc):
         fig, ax = plt.subplots(2)
@@ -119,7 +116,7 @@ def main(args):
 
     # process file
     with open(args[1], 'r') as f:
-        data, labels = generateTrain(f)
+        data, labels = kp.parse(f, normalization='cartesian')
 
     # shuffle data
     data, labels = shuffle(data, labels)
@@ -130,11 +127,11 @@ def main(args):
 
         # format training data
         train = DataSet(data[:split], labels[:split])
-        DataSet.normalize(train.data, train.mean, train.std)
+        train.data = DataSet.normalize(train.data, train.mean, train.std)
 
         # format testing data
         test = DataSet(data[split:], labels[split:])
-        DataSet.normalize(test.data, train.mean, train.std)
+        test.data = DataSet.normalize(test.data, train.mean, train.std)
         
         # perform K-fold cross-validation
         scores = k_fold_cross_validation(train.data, train.labels, K, EPOCHS, BATCH_SIZE)
@@ -169,7 +166,7 @@ def main(args):
     else:
         # format training data
         train = DataSet(data, labels)
-        DataSet.normalize(train.data, train.mean, train.std)
+        train.data = DataSet.normalize(train.data, train.mean, train.std)
 
         # build model
         model = build_model(train.data.shape[1], train.labels.shape[1], summary=True)
@@ -180,6 +177,11 @@ def main(args):
         # save model
         model.save('DLNN.h5')
 
+        # save data normalization parameters
+        mean = train.mean.reshape(1, train.mean.shape[0])
+        std = train.std.reshape(1, train.std.shape[0])
+        array = np.concatenate((mean, std))
+        np.save('DLNN.npy', array)
 
 if __name__ == "__main__":
     main(sys.argv)
