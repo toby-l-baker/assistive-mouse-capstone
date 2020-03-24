@@ -63,34 +63,45 @@ def normalize_polar(keypoints):
 
     return normalized
 
-# encodes keypoints as data
-def encode(keypoints):
-    data = ""
+# converts keypoints to a stirng
+def to_string(keypoints):
+    string = ""
+
+    if keypoints.ndim == 1:
+        keypoints = keypoints.reshape(NUM_KEYPOINTS, keypoints.shape[0]//NUM_KEYPOINTS)
 
     if keypoints.shape == (NUM_KEYPOINTS, 2):
         keypoints = np.hstack((keypoints, np.zeros((NUM_KEYPOINTS, 1))))
 
     for index, keypoint in enumerate(keypoints):
         x, y, z = keypoint
-        data += str(x) + ',' + str(y) + ',' + str(z) + ';'
+        string += str(x) + ',' + str(y) + ',' + str(z) + ';'
 
-    return data.encode()
+    return string
 
-# decodes keypoints from data
-def decode(data):
+# converts a string to keypoints
+def from_string(string):
     keypoints = np.zeros((NUM_KEYPOINTS, 3))
-    array = data.decode().strip(';').split(';')
-    
+    array = string.strip(';').split(';')
+
     for index, value in enumerate(array):
         x, y, z = [float(num) for num in value.strip(',').split(',')]
         keypoints[index] = (x, y, z)
 
     return keypoints
 
+# encodes keypoints as data
+def encode(keypoints):
+    return to_string(keypoints).encode()
+
+# decodes keypoints from data
+def decode(data):
+    return from_string(data.decode())
+
 # parses file made up of lines containing 21 (x,y) keypoints and a label
 def parse(f, normalization=None):
     raw = np.array(pd.read_csv(f, sep=',', header=None).values[1:])
-    data = raw[:, :-1].astype('float64') 
+    data = raw[:, :-1].astype('float32') 
     labels = raw[:, -1].astype('int8')
 
     if normalization == 'cartesian':
