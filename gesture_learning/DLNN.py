@@ -8,23 +8,13 @@ import sys
 import numpy as np
 import keypoints as kp
 import matplotlib.pyplot as plt
-from keras import models, layers
-from keras.utils import to_categorical
+from keras import models, layers, utils
 
-DATA_SPLIT = 0.75   # split percentage for training vs. testing data
-K = 0               # number of folds to process for validation
-EPOCHS = 100        # number of epochs to train the model
-BATCH_SIZE = 16     # training data batch size
-
-class DataSet:
-    def __init__(self, data, labels):
-        self.data = data[:, 2:]
-        self.labels = to_categorical(labels)
-        self.mean = self.data.mean(axis=0)
-        self.std = self.data.std(axis=0)
-
-    def normalize(data, mean, std):
-        return (data - mean) / std
+K = 0                       # number of folds to process for validation
+EPOCHS = 100                # number of epochs to train the model
+BATCH_SIZE = 16             # training data batch size
+SPLIT = 0.75                # split percentage for training vs. testing data
+NORMALIZATION = 'polar'     # type of data normalization
 
 def plot(epochs, loss, acc, val_loss, val_acc):
         fig, ax = plt.subplots(2)
@@ -90,7 +80,7 @@ def k_fold_cross_validation(data, labels, k, epochs=1, batch_size=1):
                             batch_size=batch_size,
                             verbose=1)
 
-        # Record scores
+        # record scores
         scores[0].append(history.history['loss'])
         scores[1].append(history.history['acc'])
         scores[2].append(history.history['val_loss'])
@@ -98,13 +88,7 @@ def k_fold_cross_validation(data, labels, k, epochs=1, batch_size=1):
 
         print("")
 
-
     return scores
-
-def shuffle(a, b):
-    assert len(a) == len(b)
-    p = np.random.permutation(len(a))
-    return a[p], b[p]
 
 def main(args):
     average = []
@@ -115,25 +99,19 @@ def main(args):
         print("Usage: python DLNN.py data")
         exit()
 
-    # process file
-    with open(args[1], 'r') as f:
-        data, labels = kp.parse(f, normalization='polar')
-
-    # shuffle data
-    data, labels = shuffle(data, labels)
-
     if K > 0:
-        samples = data.shape[0]
-        split = int(samples * DATA_SPLIT)
-
-        # format training data
-        train = DataSet(data[:split], labels[:split])
-        train.data = DataSet.normalize(train.data, train.mean, train.std)
-
-        # format testing data
-        test = DataSet(data[split:], labels[split:])
-        test.data = DataSet.normalize(test.data, train.mean, train.std)
+        # process file
+        with open(args[1], 'r') as f:
+            train, test = kp.parse(f, shuffle=True, normalization=NORMALIZATION, split=SPLIT)
         
+        # format training set
+        train.data = kp.dataset.normalize(train.data, train.mean, train.std)
+        train.labels = utils.to_categorical(train.labels)
+
+        # format testing set
+        test.data = kp.dataset.normalize(test.data, train.mean, train.std)
+        test.labels = utils.to_categorical(test.labels)
+
         # perform K-fold cross-validation
         scores = k_fold_cross_validation(train.data, train.labels, K, EPOCHS, BATCH_SIZE)
 
@@ -165,9 +143,13 @@ def main(args):
         # visualize training
         plot(np.arange(EPOCHS), average[0], average[1], average[2], average[3])
     else:
-        # format training data
-        train = DataSet(data, labels)
-        train.data = DataSet.normalize(train.data, train.mean, train.std)
+        # process file
+        with open(args[1], 'r') as f:
+            train, test = kp.parse(f, shuffle=True, normalization=NORMALIZATION, split=None)
+
+        # format training set
+        train.data = kp.dataset.normalize(train.data, train.mean, train.std)
+        train.labels = utils.to_categorical(train.labels)
 
         # build model
         model = build_model(train.data.shape[1], train.labels.shape[1], summary=True)

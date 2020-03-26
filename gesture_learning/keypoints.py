@@ -7,6 +7,26 @@ import pandas as pd
 
 NUM_KEYPOINTS = 21  # number of keypoints
 
+# container for learning data and labels
+class dataset:
+    def __init__(self, data, labels):
+        self.data = data
+        self.labels = labels
+
+        if data.shape[0] != 0:
+            self.mean = data.mean(axis=0)
+            self.std = data.std(axis=0)
+        else:
+            self.mean = None
+            self.std = None
+
+    def normalize(data, mean, std):
+        return (data - mean) / std
+
+    def shuffle(a, b):
+        p = np.random.permutation(min(len(a), len(b)))
+        return a[p], b[p]
+
 # calculates the length of a vector
 def length(vector):
     return np.linalg.norm(vector)
@@ -99,19 +119,32 @@ def decode(data):
     return from_string(data.decode())
 
 # parses file made up of lines containing 21 (x,y) keypoints and a label
-def parse(f, normalization=None):
+def parse(f, shuffle=False, normalization=None, split=None):
     raw = np.array(pd.read_csv(f, sep=',', header=None).values[1:])
     data = raw[:, :-1].astype('float32') 
     labels = raw[:, -1].astype('int8')
 
-    if normalization == 'cartesian':
-        for index, entry in enumerate(data):
+    if shuffle is True:
+        data, labels = dataset.shuffle(data, labels)        
+
+    for index, entry in enumerate(data):
+        if normalization == 'cartesian':
             data[index] = normalize_cartesian(entry)
-    elif normalization == 'polar':
-        for index, entry in enumerate(data):
+        elif normalization == 'polar':
             data[index] = normalize_polar(entry)
 
-    return data, labels
+    if normalization is not None:
+        data = data[:, 2:]
+
+    if split is not None:
+        split = int(data.shape[0] * split)
+    else:
+        split = data.shape[0]
+
+    train = dataset(data[:split], labels[:split])
+    test = dataset(data[split:], labels[split:])
+
+    return train, test
 
 # displays keypoints
 def display(keypoints):

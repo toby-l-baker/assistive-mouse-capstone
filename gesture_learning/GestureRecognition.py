@@ -10,7 +10,6 @@ import numpy as np
 import keypoints as kp
 import joblib
 from keras import models
-from DLNN import DataSet
 
 IP = 'localhost'    # IP address of MediaPipe UDP client
 PORT = 2000         # port number of MediaPipe UDP client
@@ -128,10 +127,8 @@ def main(args):
         data, addr = sock.recvfrom(MAX_BYTES)
 
         # process data
-        keypoints = kp.decode(data)
-        keypoints = kp.normalize_polar(keypoints)[1:, :-1].flatten()
-        keypoints = keypoints.reshape((1, keypoints.shape[0]))
-        keypoints = DataSet.normalize(keypoints, mean, std)
+        keypoints = kp.normalize_polar(kp.decode(data))[1:, :-1].flatten()
+        keypoints = kp.dataset.normalize(keypoints.reshape((1, keypoints.shape[0])), mean, std)
 
         if supervised is True:
             # predict gesture
@@ -143,5 +140,5 @@ def main(args):
         else:
             raise NotImplementedError
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main(sys.argv)
