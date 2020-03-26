@@ -59,7 +59,7 @@ def build_model(inputs, outputs, summary=False):
     model.add(layers.Dense(outputs, activation='softmax'))
     model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['acc'])
 
-    if summary:
+    if summary is True:
         model.summary()
 
     return model
@@ -179,10 +179,7 @@ def main(args):
         model.save('models/DLNN.h5')
 
         # save data normalization parameters
-        mean = train.mean.reshape(1, train.mean.shape[0])
-        std = train.std.reshape(1, train.std.shape[0])
-        array = np.concatenate((mean, std))
-        np.save('models/DLNN.npy', array)
+        np.savez_compressed('models/DLNN', mean=train.mean, std=train.std)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main(sys.argv)

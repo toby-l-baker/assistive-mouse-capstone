@@ -97,7 +97,9 @@ def main(args):
 
         # load data normalization parameters
         try:
-            mean, std = np.load(args[1].replace('.h5', '.npy'))
+            data = np.load(args[1].replace('.h5', '.npz'))
+            mean = data['mean']
+            std = data['std']
         except:
             print("Error: missing data normalization parameters")
             exit()
