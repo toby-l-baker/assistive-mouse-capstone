@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.1)
+project( cameramousecpp )
+find_package( OpenCV REQUIRED )
+add_executable( cameramousecpp main.cpp )
+target_link_libraries( cameramousecpp ${OpenCV_LIBS} )

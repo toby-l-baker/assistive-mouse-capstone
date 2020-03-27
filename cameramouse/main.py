@@ -7,8 +7,6 @@ import argparse
 ap = argparse.ArgumentParser()
 ap.add_argument("-cam", "--camera", type=str, required=True,
 	help="Set to realsense or webcam")
-ap.add_argument("-m", "--mouse", type=str, required=True,
-	help="Options: optical, segmentation")
 ap.add_argument("-filt", "--filter", type=str, required=True,
 	help="Options: FIR, IIR")
 ap.add_argument("-filt_size", "--filter_size", type=int, required=True,
@@ -38,13 +36,8 @@ elif args.os == "windows":
 else:
     raise NameError("Unsupported OS, must me linux or windows")
 
-if args.mouse == "optical":
-    mouse = OpticalFlowMouse(camera)
-elif args.mouse == "segmentation":
-    assert(args.filter.upper() in ["IIR", "FIR"])
-    mouse = HandSegmentationMouse(camera, args.filter, args.filter_size, args.control, mouse, monitor)
-else:
-    raise NameError("Invalid mouse type")
+assert(args.filter.upper() in ["IIR", "FIR"])
+mouse = HandSegmentationMouse(camera, args.filter, args.filter_size, args.control, mouse, monitor)
 
 if __name__ == "__main__":
     mouse.run()
