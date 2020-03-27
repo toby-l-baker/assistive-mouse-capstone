@@ -62,27 +62,28 @@ int clip(int n, int lower, int upper) {
 // them
 vector<vector<Point>> get_contours(cv::Mat hsv_frame) {
     cv::Mat temp;
-    cv::Mat filtered;
+    // cv::Mat filtered;
     cv::Mat backproj;
     cv::calcBackProject(&hsv_frame, 1, ch, hand_hist, backproj, ranges); // see how well the pixels fit our histogram
     cv::Mat erosion_kernel = cv::getStructuringElement(cv::MORPH_RECT, Size(7, 7)); 
     cv::Mat dilation_kernel = cv::getStructuringElement(cv::MORPH_ELLIPSE, Size(8, 8));
 
     // Filtering, morphological operations and thresholding
-    cv::filter2D(backproj, filtered, -1, // same as source image
+    cv::filter2D(backproj, temp, -1, // dimension the same as source image
                 getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(6,6))); //convolves the image with this kernel
-    cv::threshold(filtered, temp, HS_THRESH, 255, 0); // 0 is binary thresholding
+    cv::threshold(temp, temp, HS_THRESH, 255, 0); // 0 is binary thresholding
     cv::erode(temp, temp, erosion_kernel, cv::Point(-1, -1), EROSION_IT); //anchor, iterations
     cv::dilate(temp, temp, dilation_kernel, cv::Point(-1, -1), DILATION_IT);
     cv::medianBlur(temp, temp, 5);
+
     // Get contours
     vector<vector<Point>> contours;
     vector<Vec4i> hierarchy;
     cv::findContours(temp, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-    //show the thresholded frame
-    cv::imshow("Thresholded Output", temp);
-    //show the output of filter 2D
-    cv::imshow("Filtered Back Projection", filtered);
+    // //show the thresholded frame
+    // cv::imshow("Thresholded Output", temp);
+    // //show the output of filter 2D
+    // cv::imshow("Filtered Back Projection", filtered);
     return contours;
 }
 
@@ -169,7 +170,8 @@ void HandTracker::update_position(cv::Mat frame) {
 
     // Update the hand histogram
     // TODO: replace with something that uses the keypoints of mediapipe e.g. centre of palm or use a small square around each keypoint
-    cv::Rect hand_sample
+    cv::Rect hand_sample (centroid.x - SAMPLE_BOX_SIZE/2, centroid.y - SAMPLE_BOX_SIZE/2, SAMPLE_BOX_SIZE, SAMPLE_BOX_SIZE);
+    hand_hist = adapt_histogram(hsv(hand_sample), hand_hist);
 
     // Set the state of the new hand
     new_hand.set_state(centroid, bound, max_area);
@@ -177,6 +179,7 @@ void HandTracker::update_position(cv::Mat frame) {
     // Draw the search region and hand location on the frame
     cv::rectangle(frame, bound, red, 2);
     cv::rectangle(frame, roi, green, 2);
+    // cv::rectangle(frame, hand_sample, blue, 2);
     cv::circle(frame, centroid, 5, green, -1);
 }
 
@@ -254,7 +257,6 @@ int main(int argc, char* argv[])
 
         hand_tracker.update_position(frame_blurred);
         hand_tracker.new_hand.update_velocity(hand_tracker.old_hand);
-        cout << hand_tracker.new_hand.velocity << " ... " << hand_tracker.old_hand.velocity << endl;
         hand_tracker.old_hand.set_state(hand_tracker.new_hand.centroid, hand_tracker.new_hand.bound, hand_tracker.new_hand.area);
         hand_tracker.old_hand.velocity = hand_tracker.new_hand.velocity;
 

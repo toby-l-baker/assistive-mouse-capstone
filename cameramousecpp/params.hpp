@@ -16,3 +16,4 @@
 
 // Tracker Parameters
 #define EXPANSION_VAL 50
+#define SAMPLE_BOX_SIZE 25
