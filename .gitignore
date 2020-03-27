@@ -9,3 +9,5 @@ mediapipe/mediapipe/provisioning_profile.mobileprovision
 mediapipe/mediapipe/MediaPipe.xcodeproj
 mediapipe/mediapipe/MediaPipe.tulsiproj/*.tulsiconf-user
 .vscode/
+cameramousecpp/CMakeFiles/
+cameramousecpp/CMakeCache.txt
