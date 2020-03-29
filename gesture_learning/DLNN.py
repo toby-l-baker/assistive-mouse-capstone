@@ -42,10 +42,10 @@ def plot(epochs, loss, acc, val_loss, val_acc):
 def build_model(inputs, outputs, summary=False):
     model = models.Sequential()
 
-    model.add(layers.Dense(32, activation='relu', input_shape=(inputs,)))
-    model.add(layers.Dense(32, activation='relu'))
-    model.add(layers.Dense(32, activation='relu'))
-    model.add(layers.Dense(32, activation='relu'))
+    model.add(layers.Dense(16, activation='relu', input_shape=(inputs,)))
+    model.add(layers.Dense(16, activation='relu'))
+    model.add(layers.Dense(16, activation='relu'))
+    model.add(layers.Dense(16, activation='relu'))
     model.add(layers.Dense(outputs, activation='softmax'))
     model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['acc'])
 

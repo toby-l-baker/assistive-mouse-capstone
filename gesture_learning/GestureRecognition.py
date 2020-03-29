@@ -10,6 +10,7 @@ import numpy as np
 import keypoints as kp
 import joblib
 from keras import models
+from Unsupervised import keypointsToFeatures
 
 IP = 'localhost'    # IP address of MediaPipe UDP client
 PORT = 2000         # port number of MediaPipe UDP client
@@ -24,8 +25,8 @@ def yellow(string):
 def red(string):
     return "\033[91m{}\033[00m".format(string)
             
-def display(gesture, output, supervised):
-    if supervised is True:
+def display(gesture, output, keras_model=False):
+    if keras_model is True:
         string = ""
 
         if output[gesture] > 0.95:
@@ -71,16 +72,26 @@ def display(gesture, output, supervised):
         
         print(string, end='\r')
     else:
+        string = ""
+        color = green
+
         if gesture == 0:
-            print("CLOSE")
+            # CLOSE
+            string = color("CLOSE") + " | OK | OPEN | CLICK"
         elif gesture == 1:
-            print("OK")
+            # OK
+            string = "CLOSE | " + color("OK") + " | OPEN | CLICK"
         elif gesture == 2:
-            print("OPEN")
+            # OPEN
+            string = "CLOSE | OK | " + color("OPEN") + " | CLICK"
         elif gesture == 3:
-            print("CLICK")
+            # CLICK
+            string = "CLOSE | OK | OPEN | CLICK" + color("CLICK")
         else:
-            print("UNKNOWN")
+            # UNKNOWN
+            string = "CLOSE | OK | OPEN | CLICK"
+        
+        print(string, end='\r')
 
 def main(args):
     # check for correct arguments
@@ -89,7 +100,7 @@ def main(args):
         exit()
     
     if args[1].endswith('.h5'):
-        supervised = True
+        keras_model = True
 
         # load model
         model = models.load_model(args[1])
@@ -103,7 +114,7 @@ def main(args):
             print("Error: missing data normalization parameters")
             exit()
     elif args[1].endswith('.sav'):
-        supervised = False
+        keras_model = False
 
         # load model
         model = joblib.load(args[1])
@@ -112,10 +123,7 @@ def main(args):
         exit()
 
     print("=================================================================")
-    if supervised is True:
-        print("Using supervised model [" + args[1] + "]")
-    else:
-        print("Using unsupervised model [" + args[1] + "]")
+    print("Using model " + args[1])
     print("-----------------------------------------------------------------")
 
     # establish UDP connection
@@ -123,22 +131,29 @@ def main(args):
     sock.bind((IP, PORT))
 
     while True:
-        # receive data
+        # receive keypoints over UDP
         data, addr = sock.recvfrom(MAX_BYTES)
+        keypoints = kp.decode(data)
 
-        # process data
-        keypoints = kp.normalize_polar(kp.decode(data))[1:, :-1].flatten()
-        keypoints = kp.dataset.normalize(keypoints.reshape((1, keypoints.shape[0])), mean, std)
+        if keras_model is True:
+            # normalize keypoints
+            keypoints = kp.normalize_polar(keypoints)[1:, :-1].flatten()
+            keypoints = kp.dataset.normalize(keypoints.reshape((1, keypoints.shape[0])), mean, std)
 
-        if supervised is True:
             # predict gesture
             output = model.predict(keypoints)[0]
             gesture = np.argmax(output)
-
-            # display gesture
-            display(gesture, output, supervised)
         else:
-            raise NotImplementedError
+            # convert keypoints to features
+            features = keypointsToFeatures(keypoints[:, :-1].flatten())
+            features.reshape((1, features.shape[0]))
+
+            # predict gesture
+            gesture = model.predict(features)[0]
+            output = None
+
+        # display gesture
+        display(gesture, output, keras_model)
 
 if __name__ == '__main__':
     main(sys.argv)
