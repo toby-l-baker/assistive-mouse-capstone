@@ -72,24 +72,21 @@ def display(gesture, output, keras_model=False):
         
         print(string, end='\r')
     else:
-        string = ""
-        color = green
-
         if gesture == 0:
             # CLOSE
-            string = color("CLOSE") + " | OK | OPEN | CLICK"
+            string = green("CLOSE") + " | OK | OPEN | CLICK"
         elif gesture == 1:
             # OK
-            string = "CLOSE | " + color("OK") + " | OPEN | CLICK"
+            string = "CLOSE | " + green("OK") + " | OPEN | CLICK"
         elif gesture == 2:
             # OPEN
-            string = "CLOSE | OK | " + color("OPEN") + " | CLICK"
+            string = "CLOSE | OK | " + green("OPEN") + " | CLICK"
         elif gesture == 3:
             # CLICK
-            string = "CLOSE | OK | OPEN | CLICK" + color("CLICK")
+            string = "CLOSE | OK | OPEN | " + green("CLICK")
         else:
             # UNKNOWN
-            string = "CLOSE | OK | OPEN | CLICK"
+            string = red("CLOSE") + " | " + red("OK") + " | " + red("OPEN") + " | " + red("CLICK")
         
         print(string, end='\r')
 
@@ -138,22 +135,27 @@ def main(args):
         if keras_model is True:
             # normalize keypoints
             keypoints = kp.normalize_polar(keypoints)[1:, :-1].flatten()
-            keypoints = kp.dataset.normalize(keypoints.reshape((1, keypoints.shape[0])), mean, std)
+            keypoints = kp.dataset.normalize(keypoints.reshape((1, -1)), mean, std)
 
             # predict gesture
             output = model.predict(keypoints)[0]
             gesture = np.argmax(output)
+        
+            # display gesture
+            display(gesture, output, keras_model)
         else:
             # convert keypoints to features
             features = keypointsToFeatures(keypoints[:, :-1].flatten())
-            features.reshape((1, features.shape[0]))
+            features = features.reshape((1, -1))
 
             # predict gesture
-            gesture = model.predict(features)[0]
-            output = None
+            if np.isnan(np.sum(features)):
+                gesture = -1
+            else:
+                gesture = model.predict(features)[0]
 
-        # display gesture
-        display(gesture, output, keras_model)
+            # display gesture
+            display(gesture, None, keras_model)
 
 if __name__ == '__main__':
     main(sys.argv)

@@ -46,7 +46,7 @@ def rigid_body_transform(point, origin, angle):
 # normalizes keypoints in cartesian coordinates
 def normalize_cartesian(keypoints):
     if keypoints.ndim == 1:
-        keypoints = keypoints.reshape(NUM_KEYPOINTS, keypoints.shape[0]//NUM_KEYPOINTS)
+        keypoints = keypoints.reshape((NUM_KEYPOINTS, -1))
         flatten = True
     else:
         flatten = False
@@ -67,7 +67,7 @@ def normalize_cartesian(keypoints):
 # normalizes keypoints in polar coordinates
 def normalize_polar(keypoints):
     if keypoints.ndim == 1:
-        keypoints = normalize_cartesian(keypoints.reshape(NUM_KEYPOINTS, keypoints.shape[0]//NUM_KEYPOINTS))
+        keypoints = normalize_cartesian(keypoints.reshape((NUM_KEYPOINTS, -1)))
         flatten = True
     else:
         keypoints = normalize_cartesian(keypoints)
@@ -88,7 +88,7 @@ def to_string(keypoints):
     string = ""
 
     if keypoints.ndim == 1:
-        keypoints = keypoints.reshape(NUM_KEYPOINTS, keypoints.shape[0]//NUM_KEYPOINTS)
+        keypoints = keypoints.reshape((NUM_KEYPOINTS, -1))
 
     if keypoints.shape == (NUM_KEYPOINTS, 2):
         keypoints = np.hstack((keypoints, np.zeros((NUM_KEYPOINTS, 1))))
