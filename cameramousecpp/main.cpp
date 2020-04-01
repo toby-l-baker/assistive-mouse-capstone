@@ -25,11 +25,17 @@ cv::Scalar red (0, 0, 255);
 cv::Mat hand_hist;
 
 // Setup for various histogram values
-int ch[] = {0, 1};
-int hist_size[] = {H_BINS, S_BINS};
-float h_ranges[] = {0, 180};
-float s_ranges[] = {0, 255};
-const float* ranges[] = { h_ranges, s_ranges };
+// int ch[] = {0, 1};
+// int hist_size[] = {H_BINS, S_BINS};
+// float h_ranges[] = {0, 180};
+// float s_ranges[] = {0, 255};
+// const float* ranges[] = { h_ranges, s_ranges };
+// Setup for various histogram values
+int ch[2];
+int hist_size[2];
+float h_ranges[2];
+float s_ranges[2];
+const float* ranges[2];
 
 /*** Helper Functions ***/
 
@@ -119,7 +125,7 @@ class HandTracker {
         Hand old_hand;
         Hand new_hand;
         cv::Rect predict_position(void); // predicts a region where the hand will be based on the prior velocity
-        void update_position(cv::Mat); // locates the hand in the bounded region defined by predict_position
+        void update_position(cv::Mat, cv::Rect roi_mp, bool mp_available); // locates the hand in the bounded region defined by predict_position
 } tracker;
 
 cv::Rect HandTracker::predict_position() {
@@ -139,12 +145,15 @@ cv::Rect HandTracker::predict_position() {
 }
 
 // Returns a hand struct of where the hand is in the frame currently
-void HandTracker::update_position(cv::Mat frame) {
-    cv::Mat hsv;
-    cv::cvtColor(frame, hsv, cv::COLOR_BGR2HSV); // convert the frame to hsv colour space
-    cv::Rect roi = predict_position();
+void HandTracker::update_position(cv::Mat frame, cv::Rect roi_mp, bool mp_available) {
 
-    vector<vector<Point>> contours = get_contours(hsv(roi)); // this will be in local coords
+    cv::Rect roi (roi_mp.x, roi_mp.y, roi_mp.width, roi_mp.height);
+    
+    if (mp_available == false) {
+        roi = predict_position();
+    }
+
+    vector<vector<Point>> contours = get_contours(frame(roi)); // this will be in local coords
 
     // Currently uses largest contour by area
     double max_area = 0.0;
@@ -168,19 +177,13 @@ void HandTracker::update_position(cv::Mat frame) {
     centroid.x += roi.x;
     centroid.y += roi.y;
 
-    // Update the hand histogram
-    // TODO: replace with something that uses the keypoints of mediapipe e.g. centre of palm or use a small square around each keypoint
-    cv::Rect hand_sample (centroid.x - SAMPLE_BOX_SIZE/2, centroid.y - SAMPLE_BOX_SIZE/2, SAMPLE_BOX_SIZE, SAMPLE_BOX_SIZE);
-    hand_hist = adapt_histogram(hsv(hand_sample), hand_hist);
-
     // Set the state of the new hand
     new_hand.set_state(centroid, bound, max_area);
 
-    // Draw the search region and hand location on the frame
     cv::rectangle(frame, bound, red, 2);
     cv::rectangle(frame, roi, green, 2);
     // cv::rectangle(frame, hand_sample, blue, 2);
-    cv::circle(frame, centroid, 5, green, -1);
+    cv::circle(frame, centroid, 5, blue, -1);
 }
 
 int main(int argc, char* argv[])
@@ -200,19 +203,29 @@ int main(int argc, char* argv[])
 
     bool calibrated = false;
 
+    ch[0] = 0;
+    ch[1] = 1;
+    hist_size[0] = H_BINS;
+    hist_size[1] = S_BINS;
+    h_ranges[0] = 0;
+    h_ranges[1] = 180;
+    s_ranges[0] = 0;
+    s_ranges[1] = 255;
+    ranges[0] = h_ranges;
+    ranges[1] = s_ranges;
+
     HandTracker hand_tracker;
 
     cv::Mat frame;
     cv::Mat frame_blurred;
+    cv::Mat hsv;
+    bool bSuccess;
 
     while (true)
     {
-        bool bSuccess = cap.read(frame); // read a new frame from video 
-        cv::GaussianBlur(frame, frame_blurred, Size(BLUR_KERNEL_SIZE, BLUR_KERNEL_SIZE), 0); // Blur image with 5x5 kernel
-
         // HISTOGRAM CALIBRATION
         // TODO: interface with medaipipe so each time the camera moves from our of frame to in frame we take a sample and initialise the hands position
-        while (calibrated == false) {
+        if (calibrated == false) {
             bSuccess = cap.read(frame); // read a new frame from video 
             cv::GaussianBlur(frame, frame_blurred, Size(BLUR_KERNEL_SIZE, BLUR_KERNEL_SIZE), 0); // Blur image with 5x5 kernel
             dWidth = frame.size().width;
@@ -222,11 +235,10 @@ int main(int argc, char* argv[])
             cv::rectangle(frame_blurred, roi_rect.tl(), roi_rect.br(), blue);
             if (waitKey(10) == 'z') { // hand is in the right spot, sample histogram
                 cv::Mat roi = frame_blurred(roi_rect);
-                cv::Mat hsv;
                 cv::cvtColor(roi, hsv, cv::COLOR_BGR2HSV);
                 hand_hist = get_histogram(hsv);
                 calibrated = true;
-                cv::cvtColor(frame, hsv, cv::COLOR_BGR2HSV);
+                cv::cvtColor(frame_blurred, hsv, cv::COLOR_BGR2HSV);
                 vector<vector<Point>> conts = get_contours(hsv);
 
                 // Currently uses largest contour by area
@@ -247,22 +259,22 @@ int main(int argc, char* argv[])
                 // Set the state of the new hand
                 hand_tracker.old_hand.set_state(centroid, bound, max_area);
                 hand_tracker.old_hand.velocity = {0, 0};
-                cv::destroyWindow("Calibration Feed");
-                break;
             }
-            cv::imshow("Calibration Feed", frame_blurred);
+            cv::imshow("Feed", frame_blurred);
+        } else { // Hand Calibrated
+            bSuccess = cap.read(frame); // read a new frame from video 
+            cv::GaussianBlur(frame, frame_blurred, Size(BLUR_KERNEL_SIZE, BLUR_KERNEL_SIZE), 0); // Blur image with 5x5 kernel
+            cv::cvtColor(frame_blurred, hsv, cv::COLOR_BGR2HSV);
+            cv::Rect roi_mp (0, 0, 1, 1);
+            hand_tracker.update_position(hsv, roi_mp, false);
+            hand_tracker.new_hand.update_velocity(hand_tracker.old_hand);
+            hand_tracker.old_hand.set_state(hand_tracker.new_hand.centroid, hand_tracker.new_hand.bound, hand_tracker.new_hand.area);
+            hand_tracker.old_hand.velocity = hand_tracker.new_hand.velocity;
+            //show the filtered back projection
+            cv::cvtColor(hsv, frame_blurred, cv::COLOR_HSV2BGR);
+            cv::imshow("Feed", frame_blurred);
         }
 
-        // Main functionality
-
-        hand_tracker.update_position(frame_blurred);
-        hand_tracker.new_hand.update_velocity(hand_tracker.old_hand);
-        hand_tracker.old_hand.set_state(hand_tracker.new_hand.centroid, hand_tracker.new_hand.bound, hand_tracker.new_hand.area);
-        hand_tracker.old_hand.velocity = hand_tracker.new_hand.velocity;
-
-
-        //show the filtered back projection
-        cv::imshow("Camera Feed", frame_blurred);
 
         // Breaking the while loop if the frames cannot be captured
         if (bSuccess == false) {break;}
