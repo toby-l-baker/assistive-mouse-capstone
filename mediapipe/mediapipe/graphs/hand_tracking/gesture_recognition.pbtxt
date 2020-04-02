@@ -1,8 +1,3 @@
-# MediaPipe graph that performs hand tracking on desktop with TensorFlow Lite
-# on CPU.
-# Used in the example in
-# mediapipie/examples/desktop/hand_tracking:hand_tracking_cpu.
-
 # Images coming into and out of the graph.
 input_stream: "input_video"
 output_stream: "output_video"
@@ -101,4 +96,17 @@ node {
   input_stream: "NORM_RECT:hand_rect"
   input_stream: "DETECTIONS:palm_detections"
   output_stream: "IMAGE:output_video"
+}
+
+# Forwards hand landmarks over UDP
+node {
+  calculator: "LandmarkForwarderCalculator"
+  input_stream: "LANDMARKS:hand_landmarks"
+}
+
+node {
+  calculator: "HandTrackingCalculator"
+  input_stream: "IMAGE:input_video"
+  input_stream: "NORM_RECT:hand_rect"
+  input_stream: "LANDMARKS:hand_landmarks"
 }

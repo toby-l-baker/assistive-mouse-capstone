@@ -1173,6 +1173,20 @@ cc_library(
         "//mediapipe/framework:calculator_framework",
         "//mediapipe/framework/formats:landmark_cc_proto",
         "//mediapipe/framework/port:ret_check",
+        "//mediapipe/framework:udp",
+    ],
+    alwayslink = 1,
+)
+
+cc_library(
+    name = "hand_tracking_calculator",
+    srcs = ["hand_tracking_calculator.cc"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//mediapipe/framework:calculator_framework",
+        "//mediapipe/framework/formats:landmark_cc_proto",
+        "//mediapipe/framework/port:ret_check",
+        "//mediapipe/framework:udp",
     ],
     alwayslink = 1,
 )

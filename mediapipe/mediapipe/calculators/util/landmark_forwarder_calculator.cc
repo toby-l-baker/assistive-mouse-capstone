@@ -6,74 +6,7 @@
 #include "mediapipe/framework/calculator_framework.h"
 #include "mediapipe/framework/formats/landmark.pb.h"
 #include "mediapipe/framework/port/ret_check.h"
-
-namespace udp {
-class client
-{
-private:
-    int f_socket;
-    int f_port;
-    std::string f_addr;
-    struct addrinfo *f_addrinfo;
-
-public:
-    client(const std::string& addr, int port) : f_port(port), f_addr(addr)
-    {
-        char decimal_port[16];
-        struct addrinfo hints;
-        int ret_val;
-
-        snprintf(decimal_port, sizeof(decimal_port), "%d", f_port);
-
-        memset(&hints, 0, sizeof(hints));
-        hints.ai_family = AF_UNSPEC;
-        hints.ai_socktype = SOCK_DGRAM;
-        hints.ai_protocol = IPPROTO_UDP;
-
-        ret_val = getaddrinfo(f_addr.c_str(), decimal_port, &hints, &f_addrinfo);
-
-        if(ret_val != 0 || f_addrinfo == NULL)
-        {
-            throw std::runtime_error(("invalid address or port: \"" + addr + ":" + decimal_port + "\"").c_str());
-        }
-
-        f_socket = socket(f_addrinfo->ai_family, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_UDP);
-
-        if(f_socket == -1)
-        {
-            freeaddrinfo(f_addrinfo);
-            throw std::runtime_error(("could not create socket for: \"" + addr + ":" + decimal_port + "\"").c_str());
-        }
-    }
-
-    ~client()
-    {
-        freeaddrinfo(f_addrinfo);
-        close(f_socket);
-    }
-
-    int get_socket() const
-    {
-        return(f_socket);
-    }
-
-    int get_port() const
-    {
-        return(f_port);
-    }
-
-    std::string get_addr() const
-    {
-        return(f_addr);
-    }
-
-    int send(const char *msg, size_t size)
-    {
-        return(sendto(f_socket, msg, size, 0, f_addrinfo->ai_addr, f_addrinfo->ai_addrlen));
-    }
-};
-}
-
+#include "mediapipe/framework/udp.h"
 
 namespace mediapipe {
 
