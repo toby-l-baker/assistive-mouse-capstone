@@ -1297,6 +1297,13 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "udp",
+    srcs = ["udp.cc"],
+    hdrs = ["udp.h"],
+    visibility = ["//visibility:public"],
+)
+
 # cc tests
 cc_test(
     name = "calculator_base_test",
