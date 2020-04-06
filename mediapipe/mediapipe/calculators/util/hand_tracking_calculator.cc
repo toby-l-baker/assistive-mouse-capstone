@@ -32,24 +32,20 @@ using namespace std;
 
 /*** GLOBALS ***/
 
-// width and height of the frame
-double dHeight;
-double dWidth;
-
 // For drawing on frames
-cv::Scalar blue (255, 0, 0);
-cv::Scalar green (0, 255, 0);
-cv::Scalar red (0, 0, 255);
+// cv::Scalar blue (255, 0, 0);
+// cv::Scalar green (0, 255, 0);
+// cv::Scalar red (0, 0, 255);
 
 // Hand Histogram
-cv::Mat hand_hist;
+// cv::Mat hand_hist;
 
 // Setup for various histogram values
-int ch[] = {0, 1};
-int hist_size[] = {H_BINS, S_BINS};
-float h_ranges[] = {0, 180};
-float s_ranges[] = {0, 255};
-const float* ranges[] = { h_ranges, s_ranges };
+// int ch[] = {0, 1};
+// int hist_size[] = {H_BINS, S_BINS};
+// float h_ranges[] = {0, 180};
+// float s_ranges[] = {0, 255};
+// const float* ranges[] = { h_ranges, s_ranges };
 
 /*** Helper Functions ***/
 
