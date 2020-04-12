@@ -4,40 +4,39 @@
 Description: Deep Learning Neural Network (DLNN) approach for gesture recognition
 Author: Ayusman Saha
 """
-import sys
+import os
+import argparse
 import numpy as np
 import keypoints as kp
 import matplotlib.pyplot as plt
 from keras import models, layers, utils
 
-K = 0                       # number of folds to process for validation
 EPOCHS = 100                # number of epochs to train the model
 BATCH_SIZE = 16             # training data batch size
-SPLIT = 0.75                # split percentage for training vs. testing data
 NORMALIZATION = 'polar'     # type of data normalization
 
-def plot(epochs, loss, acc, val_loss, val_acc):
-        fig, ax = plt.subplots(2)
+def plot_training(epochs, results):
+    plt.subplots(2)
 
-        # plot loss
-        plt.subplot(2, 1, 1)  
-        plt.plot(epochs, loss, '--b', label="Training")
-        plt.plot(epochs, val_loss, '-g', label="Validation")
-        plt.title('Model Performance')
-        plt.ylabel('Loss')
-        plt.grid()
-        plt.legend()
+    # loss
+    plt.subplot(2, 1, 1)  
+    plt.plot(epochs, results['loss'], '--b', label="Training")
+    plt.plot(epochs, results['val_loss'], '-g', label="Validation")
+    plt.title('Model Performance')
+    plt.ylabel('Loss')
+    plt.grid()
+    plt.legend()
 
-        # plot accuracy
-        plt.subplot(2, 1, 2)  
-        plt.plot(epochs, acc, '--b', label="Training")
-        plt.plot(epochs, val_acc, '-g', label="Validation")
-        plt.xlabel('Epoch')
-        plt.ylabel('Accuracy')
-        plt.grid()
-        plt.legend()
+    # accuracy
+    plt.subplot(2, 1, 2)  
+    plt.plot(epochs, results['acc'], '--b', label="Training")
+    plt.plot(epochs, results['val_acc'], '-g', label="Validation")
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy')
+    plt.grid()
+    plt.legend()
 
-        plt.show()
+    plt.show()
 
 def build_model(inputs, outputs, summary=False):
     model = models.Sequential()
@@ -47,121 +46,85 @@ def build_model(inputs, outputs, summary=False):
     model.add(layers.Dense(16, activation='relu'))
     model.add(layers.Dense(16, activation='relu'))
     model.add(layers.Dense(outputs, activation='softmax'))
-    model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['acc'])
+    model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['acc'])
 
     if summary is True:
         model.summary()
 
     return model
 
-def k_fold_cross_validation(data, labels, k, epochs=1, batch_size=1):
-    size = data.shape[0] // k
-    scores = [[], [], [], []]
+def k_fold_cross_validation(data, labels, epochs, batch_size, K=4):
+    results = {'loss': [], 'acc': [], 'val_loss': [], 'val_acc': []}
+    samples = data.shape[0] // K
 
-    for i in range(k):
-        print("Processing fold " + str(i + 1) + "/" + str(k))
+    for i in range(K):
+        print("Processing fold {}/{}".format(i+1, K))
 
         # validation data and lables
-        val_data = data[size * i:size * (i + 1)]
-        val_labels = labels[size * i:size * (i + 1)]
+        val_data = data[samples*i:samples*(i+1)]
+        val_labels = labels[samples*i:samples*(i+1)]
 
         # training data and labels
-        train_data = np.concatenate([data[:size * i], data[size * (i + 1):]], axis=0)
-        train_labels = np.concatenate([labels[:size * i], labels[size * (i + 1):]], axis=0)
+        train_data = np.concatenate([data[:samples*i], data[samples*(i+1):]], axis=0)
+        train_labels = np.concatenate([labels[:samples*i], labels[samples*(i+1):]], axis=0)
 
         # build model
         model = build_model(data.shape[1], labels.shape[1])
 
         # train model
-        history = model.fit(train_data,
-                            train_labels,
+        history = model.fit(train_data, train_labels,
                             validation_data=(val_data, val_labels),
-                            epochs=epochs,
-                            batch_size=batch_size,
-                            verbose=1)
+                            epochs=epochs, batch_size=batch_size)
 
         # record scores
-        scores[0].append(history.history['loss'])
-        scores[1].append(history.history['acc'])
-        scores[2].append(history.history['val_loss'])
-        scores[3].append(history.history['val_acc'])
+        results['loss'].append(history.history['loss'])
+        results['acc'].append(history.history['acc'])
+        results['val_loss'].append(history.history['val_loss'])
+        results['val_acc'].append(history.history['val_acc'])
 
         print("")
 
-    return scores
+    # average results
+    results['loss'] = np.mean(results['loss'], axis=0)
+    results['acc'] = np.mean(results['acc'], axis=0)
+    results['val_loss'] = np.mean(results['val_loss'], axis=0)
+    results['val_acc'] = np.mean(results['val_acc'], axis=0)
+
+    return results
 
 def main(args):
-    average = []
-    best = []
+    assert args.save is None or os.path.splitext(args.save)[1] == '.h5'
 
-    # check for correct arguments
-    if len(args) != 2:
-        print("Usage: python DLNN.py data")
-        exit()
+    # process file
+    with open(args.dataset, 'r') as f:
+        train, test = kp.parse(f, shuffle=True, normalization=NORMALIZATION)
 
-    if K > 0:
-        # process file
-        with open(args[1], 'r') as f:
-            train, test = kp.parse(f, shuffle=True, normalization=NORMALIZATION, split=SPLIT)
-        
-        # format training set
-        train.data = kp.dataset.normalize(train.data, train.mean, train.std)
-        train.labels = utils.to_categorical(train.labels)
+    # format training set
+    train.data = kp.dataset.normalize(train.data, train.mean, train.std)
+    train.labels = utils.to_categorical(train.labels)
 
-        # format testing set
-        test.data = kp.dataset.normalize(test.data, train.mean, train.std)
-        test.labels = utils.to_categorical(test.labels)
-
+    if args.save is None:
         # perform K-fold cross-validation
-        scores = k_fold_cross_validation(train.data, train.labels, K, EPOCHS, BATCH_SIZE)
-
-        # average scores
-        for score in scores:
-            average.append(np.mean(score, axis=0))
-
-        # find best scores
-        best.append((np.argmin(average[0]) + 1, np.amin(average[0])))
-        best.append((np.argmax(average[1]) + 1, np.amax(average[1])))
-        best.append((np.argmin(average[2]) + 1, np.amin(average[2])))
-        best.append((np.argmax(average[3]) + 1, np.amax(average[3])))
-
-        # display averaged scores
-        for i in range(EPOCHS):
-            print("epoch {:d}".format(i + 1)
-                  + " - loss: {:0.4f}".format(average[0][i])
-                  + " - acc: {:0.4f}".format(average[1][i])
-                  + " - val_loss: {:0.4f}".format(average[2][i])
-                  + " - val_acc: {:0.4f}".format(average[3][i]))
-        
-        # display best scores
-        print("\nbest"
-              + " - loss: {:0.4f} (epoch {:d})".format(best[0][1], best[0][0])
-              + " - acc: {:0.4f} (epoch {:d})".format(best[1][1], best[1][0])
-              + " - val_loss: {:0.4f} (epoch {:d})".format(best[2][1], best[2][0])
-              + " - val_acc: {:0.4f} (epoch {:d})".format(best[3][1], best[3][0]))
+        results = k_fold_cross_validation(train.data, train.labels, EPOCHS, BATCH_SIZE)
 
         # visualize training
-        plot(np.arange(EPOCHS), average[0], average[1], average[2], average[3])
+        plot_training(np.arange(EPOCHS), results)
     else:
-        # process file
-        with open(args[1], 'r') as f:
-            train, test = kp.parse(f, shuffle=True, normalization=NORMALIZATION, split=None)
-
-        # format training set
-        train.data = kp.dataset.normalize(train.data, train.mean, train.std)
-        train.labels = utils.to_categorical(train.labels)
-
         # build model
         model = build_model(train.data.shape[1], train.labels.shape[1], summary=True)
 
         # train model
-        model.fit(train.data, train.labels, epochs=EPOCHS, batch_size=BATCH_SIZE, verbose=0)
+        model.fit(train.data, train.labels, epochs=EPOCHS, batch_size=BATCH_SIZE)
 
         # save model
-        model.save('models/DLNN.h5')
+        model.save(args.save)
 
         # save data normalization parameters
-        np.savez_compressed('models/DLNN', mean=train.mean, std=train.std)
+        np.savez_compressed(args.save.replace('.h5', '.npz'), mean=train.mean, std=train.std)
 
 if __name__ == '__main__':
-    main(sys.argv)
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument('dataset')
+    parser.add_argument('-s', '--save', metavar='model')
+    args = parser.parse_args()
+    main(args)

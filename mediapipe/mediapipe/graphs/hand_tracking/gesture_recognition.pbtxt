@@ -104,9 +104,9 @@ node {
   input_stream: "LANDMARKS:hand_landmarks"
 }
 
-node {
-  calculator: "HandTrackingCalculator"
-  input_stream: "IMAGE:input_video"
-  input_stream: "NORM_RECT:hand_rect"
-  input_stream: "LANDMARKS:hand_landmarks"
-}
+#node {
+#  calculator: "HandTrackingCalculator"
+#  input_stream: "IMAGE:input_video"
+#  input_stream: "NORM_RECT:hand_rect"
+#  input_stream: "LANDMARKS:hand_landmarks"
+#}

@@ -4,7 +4,8 @@
 Description: Gesture recognition via MediaPipe keypoints
 Author: Ayusman Saha
 """
-import sys
+import os
+import argparse
 import socket
 import numpy as np
 import keypoints as kp
@@ -91,36 +92,30 @@ def display(gesture, output, keras_model=False):
         print(string, end='\r')
 
 def main(args):
-    # check for correct arguments
-    if len(args) != 2:
-        print("Usage: python GestureLearning.py model")
-        exit()
-    
-    if args[1].endswith('.h5'):
+    assert os.path.splitext(args.model)[1] == '.h5' or os.path.splitext(args.model)[1] == '.sav' 
+
+    if args.model.endswith('.h5'):
         keras_model = True
 
         # load model
-        model = models.load_model(args[1])
+        model = models.load_model(args.model)
 
         # load data normalization parameters
         try:
-            data = np.load(args[1].replace('.h5', '.npz'))
+            data = np.load(args.model.replace('.h5', '.npz'))
             mean = data['mean']
             std = data['std']
         except:
             print("Error: missing data normalization parameters")
             exit()
-    elif args[1].endswith('.sav'):
+    elif args.model.endswith('.sav'):
         keras_model = False
 
         # load model
-        model = joblib.load(args[1])
-    else:
-        print("Error: model format not supported")
-        exit()
+        model = joblib.load(args.model)
 
     print("=================================================================")
-    print("Using model " + args[1])
+    print("Using model {}".format(args.model))
     print("-----------------------------------------------------------------")
 
     # establish UDP connection
@@ -143,6 +138,7 @@ def main(args):
         
             # display gesture
             display(gesture, output, keras_model)
+        
         else:
             # convert keypoints to features
             features = keypointsToFeatures(keypoints[:, :-1].flatten())
@@ -158,4 +154,7 @@ def main(args):
             display(gesture, None, keras_model)
 
 if __name__ == '__main__':
-    main(sys.argv)
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument('model')
+    args = parser.parse_args()
+    main(args)
