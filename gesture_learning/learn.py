@@ -9,6 +9,9 @@ from sklearn import metrics
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 import seaborn as sns
+import pickle
+import joblib
+from sklearn.ensemble import RandomForestClassifier
 
 def plotValidation(X, y, title, xlabel, ylabel, filename):
     fig = plt.figure()
@@ -21,13 +24,12 @@ def plotValidation(X, y, title, xlabel, ylabel, filename):
 
 def tSNE(train, label, filename, k=None):
     '''
-    What is t-SNE? And how it work?
-    t-SNE [1] is a tool to visualize high-dimensional data.
-    It converts similarities between data points to joint probabilities and tries to minimize the Kullback-Leibler divergence
+    t-SNE is a tool to visualize high-dimensional data. 
+    It converts similarities between data points to joint probabilities and tries to minimize the Kullback-Leibler divergence 
     between the joint probabilities of the low-dimensional embedding and the high-dimensional data
     '''
-    # embedded = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=250).fit_transform(train)
-    embedded = TSNE(n_components=2).fit_transform(train)
+    embedded = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=1000).fit_transform(train)
+    # embedded = TSNE(n_components=2).fit_transform(train)
     df = pa.DataFrame(train)
     df['label'] = label
     df_plot = df.copy()
@@ -44,55 +46,6 @@ def tSNE(train, label, filename, k=None):
     )
     snsplt.get_figure().savefig(filename)
 
-def translateKeypoints(keypoints):
-    invariantKeypointsXY = np.zeros(keypoints.shape)
-    invariantKeypoints = np.zeros(keypoints.shape)
-    invariantKeypointsXY[1:, :] = keypoints[1:, :] - keypoints[0, :] # get x, y of all points w.r.t. the palm
-    for i in range(1, len(invariantKeypoints)):
-        invariantKeypoints[i, 0] = np.sqrt(invariantKeypointsXY[i, 0]**2 + invariantKeypointsXY[i, 1]**2) # get r
-        invariantKeypoints[i, 1] = np.atan2(invariantKeypointsXY[i, 1], invariantKeypointsXY[i, 0]) #get theta value
-    return invariantKeypoints
-
-'''
-This function will convert a set of keypoints to a set of features.
-
-param keypoints: numpy array of 21 (x,y) keypoints
-return features: numpy array of 20 features
-'''
-def keypointsToFeatures(keypoints):
-    # construct feature matirx
-    features = np.zeros(20)
-
-    # distance ratio features
-    for i in range(5):
-        denominator = (keypoints[8*(i+1) - 1] - keypoints[0])**2 + (keypoints[8*(i+1)] - keypoints[1])**2  # distance from tip to palm
-        for j in range(3):
-            numerator = (keypoints[8*i + 2*j + 1] - keypoints[0])**2 + (keypoints[8*i + 2*j + 2] - keypoints[1])**2  # distance from root/mid1/mid2 to palm
-            ratio = np.sqrt(numerator) / np.sqrt(denominator)
-            features[i*3 + j] = ratio
-            # features[i*3 + j] = ratio * 10  # 10 times to make more spearable?
-
-    # finger number feature
-    for i in range(len(features)):
-        features[15] = sum(features[3 : 15 : 4] <= 1) * 10  # stretch finger number, weighted by 10
-
-    # angle features
-    for i in range(4):  # four pairs
-        x1 = np.array([keypoints[8*(i+1) - 1] - keypoints[0], keypoints[8*(i+1)] - keypoints[1]], dtype=np.float32).T
-        x2 = np.array([keypoints[8*(i+2) - 1] - keypoints[0], keypoints[8*(i+2)] - keypoints[1]], dtype=np.float32).T
-        cos = np.sum(x1*x2) / (np.sqrt(np.sum(x1**2)) * np.sqrt(np.sum(x2**2)))  # caculate cos(theta)
-
-        # when zero angle, it is possible
-        if cos > 1:
-            cos = 1
-        elif cos < -1:
-            cos = -1
-        features[16 + i] = (np.arccos(cos) / np.pi * 180)
-        # features[16 + i] = (np.arccos(cos) / np.pi * 180)**2  # Note: use quadratic here
-
-    # return feature matrix
-    return features
-
 '''
 This function will read in raw data, return a train matrix after data modification.
 
@@ -100,7 +53,7 @@ Raw data:
 Each line is corresponding to one image.
 Each line has 21x2 numbers, which indicates (x, y) of 21 joint locations. Note that these are joint CENTRE locations.
 Note that (x, y) are already normalized by the palm key point.
-The order of 16 joints is Palm, Thumb root, Thumb mid1, Thumb mid2, Thumb tip, Index root, Thumb mid1, Thumb mid2, Index tip,
+The order of 16 joints is Palm, Thumb root, Thumb mid1, Thumb mid2, Thumb tip, Index root, Thumb mid1, Thumb mid2, Index tip, 
 Middle root, Middle mid1, Middle mid2, Middle tip, Ring root, Ring mid1, Ring mid2, Ring tip, Pinky root, Pinky mid1, Pinky mid2, Pinky tip.
 
 Revised data:
@@ -112,27 +65,27 @@ param file: raw data file path
 param n: the number of samples we using; default None, use all samples
 return train: revised trained data
 '''
-def generateTrain(file, n=None):
+def generateTrainAndTest(file, n=None):
     # read in dataset and slice
     rawData = np.array(pa.read_csv(file, sep=",", header=None).values[1:])
     label = rawData[:, -1]
     data = rawData[:, :-1]
     if n != None:
         data = data[:n, :]  # Note: only use n lines
-    # construct train feature matirx
-    train = np.zeros((data.shape[0], 20))
+    # construct feature matirx
+    feature = np.zeros((data.shape[0], 20))
     # distance ratio features
     for i in range(5):
         denominator = (data[:, 8*(i+1) - 1] - data[:, 0])**2 + (data[:, 8*(i+1)] - data[:, 1])**2  # distance from tip to palm
         for j in range(3):
             numerator = (data[:, 8*i + 2*j + 1] - data[:, 0])**2 + (data[:, 8*i + 2*j + 2] - data[:, 1])**2  # distance from root/mid1/mid2 to palm
             ratio = np.sqrt(numerator) / np.sqrt(denominator)
-            train[:, i*3 + j] = ratio
-            # train[:, i*3 + j] = ratio * 10  # 10 times to make more spearable?
+            feature[:, i*3 + j] = ratio
+            # feature[:, i*3 + j] = ratio * 10  # 10 times to make more spearable?
     # finger number feature
-    for i in range(len(train)):
-        temp = train[i, :]
-        train[i, 15] = sum(temp[3 : 15 : 4] <= 1) * 10  # stretch finger number, weighted by 10
+    for i in range(len(feature)):
+        temp = feature[i, :]
+        feature[i, 15] = sum(temp[3 : 15 : 4] <= 1) * 10  # stretch finger number, weighted by 10
     # angle features
     for i in range(4):  # four pairs
         x1 = np.array([data[:, 8*(i+1) - 1] - data[:, 0], data[:, 8*(i+1)] - data[:, 1]], dtype=np.float32).T
@@ -141,17 +94,49 @@ def generateTrain(file, n=None):
         # when zero angle, it is possible
         cos[cos > 1] = 1
         cos[cos < -1] = -1
-        train[:, 16 + i] = (np.arccos(cos) / np.pi * 180)
-        # train[:, 16 + i] = (np.arccos(cos) / np.pi * 180)**2  # Note: use quadratic here
-
+        feature[:, 16 + i] = (np.arccos(cos) / np.pi * 180)
+        # feature[:, 16 + i] = (np.arccos(cos) / np.pi * 180)**2  # Note: use quadratic here
+    # shuffle the dataset and divide into 80/20
+    indices = np.arange(feature.shape[0])
+    np.random.shuffle(indices)
+    feature = feature[indices]
+    label = label[indices]
+    n_train = int(feature.shape[0] * 0.8)
+    feature_train, feature_test = feature[:n_train], feature[n_train:]
+    label_train, label_test = label[:n_train], label[n_train:]
     # return revised matrix
-    return train, label
+    return feature_train, label_train, feature_test, label_test
 
 def getAccuracy(prediction, truth, funcName):
     n = len(prediction)
     acc = sum(prediction == truth) / n * 100
     print("The accuracy of " + funcName + " is " + str(acc) + "%")
     return
+
+def unsupervisedMetrics(feature, prediction):
+    chIndex = metrics.calinski_harabasz_score(feature, prediction)  # Calinski-Harabasz Index; a higher Calinski-Harabasz score relates to a model with better defined clusters
+    dbIndex = metrics.davies_bouldin_score(feature, prediction)  # Davies-Bouldin index; a lower Davies-Bouldin index relates to a model with better separation between the clusters
+    siScode = metrics.silhouette_score(feature, prediction, metric='euclidean')  # Silhouette Coefficient score; a higher Silhouette Coefficient score relates to a model with better defined clusters
+    print("ch: " + str(chIndex) + ", db: " + str(dbIndex) + ", si: " + str(siScode))
+
+def unsupervisedReorder(feature, label, prediction, k):
+    # sort label and prediction
+    indices = np.argsort(label)
+    label = label[indices]  # 0~4
+    prediction = prediction[indices]
+    feature = feature[indices]
+    # reorder prediction
+    convert = {}  # conversion map; convert key to value
+    i = 0
+    for idx in range(len(prediction)):
+        if prediction[idx] not in convert:
+            convert[prediction[idx]] = i
+            i += 1
+            if i == k:
+                break
+    for idx in range(len(prediction)):
+        prediction[idx] = convert[prediction[idx]]
+    return feature, label, prediction
 
 '''
 K_means algorithms; use validation to find the best K
@@ -175,27 +160,32 @@ def K_means_validation(train, min, max):
     plotValidation(range(min, max+1), chIndex, "K_means validation", "K", "Calinski-Harabasz Index", "/Users/sean/GestureLearning/K_means_ch_validation")
     plotValidation(range(min, max+1), dbIndex, "K_means validation", "K", "Davies-Bouldin Index", "/Users/sean/GestureLearning/K_means_db_validation")
     plotValidation(range(min, max+1), siScode, "K_means validation", "K", "Silhouette Coefficient score", "/Users/sean/GestureLearning/K_means_si_validation")
-
+    
     # return Calinski-Harabasz Index array
     return chIndex
 
 '''
 Use best K to train.
 '''
-def K_means_train(train, label, filename, k=None):
-    # chIndex = K_means_validation(train, 3, 20)
-    # print(chIndex)
-    # use the best K to build the model
-    # bestK = chIndex.index(max(chIndex))+3
-    # print(bestK)
-    kmeans_best_model = KMeans(n_clusters=k, random_state=0).fit(train)
-    prediction = kmeans_best_model.labels_
-    print(prediction)
+def K_means_train(feature_train, label_train, feature_test, label_test, k, filename=None):
+    km = KMeans(n_clusters=k, random_state=0)
+    km.fit(feature_train)
     # Train accuracy
-    getAccuracy(prediction, label, "Kmeans")
+    prediction_train = km.predict(feature_train)
+    feature_train, label_train, prediction_train = unsupervisedReorder(feature_train, label_train, prediction_train, k)
+    getAccuracy(prediction_train, label_train, "Kmeans Train")
+    # Test accuracy
+    prediction_test = km.predict(feature_test)
+    feature_test, label_test, prediction_test = unsupervisedReorder(feature_test, label_test, prediction_test, k)
+    getAccuracy(prediction_test, label_test, "Kmeans Test")
+    # check index
+    unsupervisedMetrics(feature_test, prediction_test)
+    # save model
+    joblib.dump(km, './models/KMEANS.sav')  # dump the Kmean model
     # write to csv
-    df = pa.DataFrame(prediction)
-    df.to_csv(filename, index=False)
+    if filename:
+        df = pa.DataFrame(prediction_test)
+        df.to_csv(filename, index=False)
 
 '''
 K_means algorithms; use validation to find the best K
@@ -218,34 +208,58 @@ def EM_validation(train, min, max):
     plotValidation(range(min, max+1), chIndex, "EM validation", "K", "Calinski-Harabasz Index", "/Users/sean/GestureLearning/EM_ch_validation")
     plotValidation(range(min, max+1), dbIndex, "EM validation", "K", "Davies-Bouldin Index", "/Users/sean/GestureLearning/EM_db_validation")
     plotValidation(range(min, max+1), siScode, "EM validation", "K", "Silhouette Coefficient score", "/Users/sean/GestureLearning/EM_si_validation")
-
+    
     # return Calinski-Harabasz Index array
     return chIndex
 
 '''
 Use best K to train.
 '''
-def EM_train(train, label, filename, k=None):
-    # chIndex = EM_validation(train, 3, 20)
-    # print(chIndex)
-    # use the best K to build the model
-    # bestK = chIndex.index(max(chIndex))+3
-    # print(bestK);
+def EM_train(feature_train, label_train, feature_test, label_test, k, filename=None):
     gmm = GaussianMixture(n_components=k, covariance_type='spherical', init_params='kmeans', max_iter=250)  # 'spherical', 'diag', 'tied', 'full'
-    gmm.fit(train)
-    prediction = gmm.predict(train)
-    print(prediction)
+    gmm.fit(feature_train)
     # Train accuracy
-    getAccuracy(prediction, label, "EM")
+    prediction_train = gmm.predict(feature_train)
+    feature_train, label_train, prediction_train = unsupervisedReorder(feature_train, label_train, prediction_train, k)
+    getAccuracy(prediction_train, label_train, "GMM Train")
+    # Test accuracy
+    prediction_test = gmm.predict(feature_test)
+    feature_test, label_test, prediction_test = unsupervisedReorder(feature_test, label_test, prediction_test, k)
+    getAccuracy(prediction_test, label_test, "GMM Test")
+    # check index
+    unsupervisedMetrics(feature_test, prediction_test)
+    # save model
+    joblib.dump(gmm, './models/GMM.sav')  # dump the Kmean model
     # write to csv
-    df = pa.DataFrame(prediction)
-    df.to_csv(filename, index=False)
+    if filename:
+        df = pa.DataFrame(prediction_test)
+        df.to_csv(filename, index=False)
 
-if __name__ == "__main__":
-    train, label = generateTrain('./twoClass')
-    # KMean algorithms
-    K_means_train(train, label, './KMeans_2.txt', 2)
-    # EM algorithms
-    EM_train(train, label, './EM_2.txt', 2)
-    # plot tSNE
-    tSNE(train, label, './tSNE_2.jpg', 2)
+'''
+Random Forest with aggregated feature
+'''
+def RF_train(feature_train, label_train, feature_test, label_test, filename=None):
+    rf = RandomForestClassifier(max_depth=10, random_state=0)
+    rf.fit(feature_train, label_train)
+    # Train accuracy
+    prediction_train = rf.predict(feature_train)
+    getAccuracy(prediction_train, label_train, "RF Train")
+    # Test accuracy
+    prediction_test = rf.predict(feature_test)
+    getAccuracy(prediction_test, label_test, "RF Test")
+    # save model
+    joblib.dump(rf, './models/RF.sav')  # dump the Kmean model
+    # write to csv
+    if filename:
+        df = pa.DataFrame(prediction_test)
+        df.to_csv(filename, index=False)
+
+feature_train, label_train, feature_test, label_test = generateTrainAndTest('./dataset/fiveClass')
+# KMean algorithms
+K_means_train(feature_train, label_train, feature_test, label_test, 5)
+# EM algorithms
+EM_train(feature_train, label_train, feature_test, label_test, 5)
+# Random Forest algorithms
+RF_train(feature_train, label_train, feature_test, label_test)
+# plot tSNE
+tSNE(feature_train, label_train, './tSNE_5.jpg', 5)
