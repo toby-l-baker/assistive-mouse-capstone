@@ -49,7 +49,7 @@ cc_library(
         "//mediapipe/calculators/util:pipe_writing_calculator",
         "//mediapipe/calculators/util:gesture_detection_calculator",
         "//mediapipe/calculators/util:landmark_forwarder_calculator",
-        #"//mediapipe/calculators/util:hand_tracking_calculator",
+        "//mediapipe/calculators/util:hand_tracking_calculator",
     ],
 )
 

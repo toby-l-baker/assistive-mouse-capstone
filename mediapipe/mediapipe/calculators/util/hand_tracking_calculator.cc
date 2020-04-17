@@ -1,11 +1,16 @@
 #include <iostream>
+#include <cmath>
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
+
 #include "mediapipe/framework/calculator_framework.h"
 #include "mediapipe/framework/formats/landmark.pb.h"
 #include "mediapipe/framework/port/ret_check.h"
 #include "mediapipe/framework/udp.h"
+#include "mediapipe/framework/formats/image_frame.h"
+#include "mediapipe/framework/formats/image_frame_opencv.h"
+#include "mediapipe/framework/formats/rect.pb.h"
 
 using namespace cv;
 using namespace std;
@@ -28,7 +33,7 @@ using namespace std;
 
 // Tracker Parameters
 #define EXPANSION_VAL 50
-#define SAMPLE_BOX_SIZE 25
+#define SAMPLE_BOX_SIZE 30
 
 /*** GLOBALS ***/
 
@@ -37,15 +42,19 @@ using namespace std;
 // cv::Scalar green (0, 255, 0);
 // cv::Scalar red (0, 0, 255);
 
+// width and height of the frame
+double dHeight;
+double dWidth;
+
 // Hand Histogram
-// cv::Mat hand_hist;
+cv::Mat hand_hist;
 
 // Setup for various histogram values
-// int ch[] = {0, 1};
-// int hist_size[] = {H_BINS, S_BINS};
-// float h_ranges[] = {0, 180};
-// float s_ranges[] = {0, 255};
-// const float* ranges[] = { h_ranges, s_ranges };
+int ch[] = {0, 1};
+int hist_size[] = {H_BINS, S_BINS};
+float h_ranges[] = {0, 180};
+float s_ranges[] = {0, 255};
+const float* ranges[] = { h_ranges, s_ranges };
 
 /*** Helper Functions ***/
 
@@ -136,6 +145,7 @@ class HandTracker {
         Hand new_hand;
         cv::Rect predict_position(void); // predicts a region where the hand will be based on the prior velocity
         void update_position(cv::Mat, cv::Rect roi_mp, bool mp_available); // locates the hand in the bounded region defined by predict_position
+        void initialise(cv::Mat frame);
 } tracker;
 
 cv::Rect HandTracker::predict_position() {
@@ -191,11 +201,42 @@ void HandTracker::update_position(cv::Mat frame, cv::Rect roi_mp, bool mp_availa
     new_hand.set_state(centroid, bound, max_area);
 }
 
+void HandTracker::initialise(cv::Mat frame) {
+    cv::Mat hsv;
+    cv::cvtColor(frame, hsv, cv::COLOR_BGR2HSV); // convert to hsv colour space
+    vector<vector<Point>> conts = get_contours(hsv); // get all contours
+    double max_area = 0.0;
+    vector<Point> max_contour;
+    // find max contour by area
+    for (int it = 0; it < conts.size(); it++) {
+        double area = cv::contourArea(conts[it]);
+        if (area > max_area) {
+            max_area = area;
+            max_contour = conts[it];
+        }
+    }
+    cv::Rect bound = cv::boundingRect(max_contour);
+    // Get the centroid
+    cv::Moments m = cv::moments(max_contour);
+    cv::Point centroid (m.m10/m.m00, m.m01/m.m00);
+
+    // Set the state of the new hand
+    old_hand.set_state(centroid, bound, max_area);
+    old_hand.velocity = {0, 0};
+}
+
+
 namespace mediapipe {
 
 namespace {
 constexpr char kInputFrameTag[] = "IMAGE";
 constexpr char kLandmarksTag[] = "LANDMARKS";
+// constexpr char kRectTag[] = "RECT";
+constexpr char kNormRectTag[] = "NORM_RECT";
+constexpr char kHeightTag[] = "HEIGHT";
+// constexpr char kImageTag[] = "IMAGE";
+// constexpr char kImageGpuTag[] = "IMAGE_GPU";
+constexpr char kWidthTag[] = "WIDTH";
 }
 
 const char *IP = "localhost";    // IP address of UDP server
@@ -211,6 +252,9 @@ private:
     cv::Mat hsv;
     cv::Mat hsv_roi; 
     HandTracker hand_tracker;
+    cv::Rect sample_region;
+    cv::Rect bbox;
+    double initial_area; // initial area of the hand - used to detect failures
     // no need for VideoCapture(0); or cap.set(cv::CAP_PROP_FPS, 30);
 
     // no need for dWidth or dHeight, use MP keypoints for sampling/initializing
@@ -218,21 +262,39 @@ private:
     // Hand Histogram
     cv::Mat hand_hist;
 
+    bool rect_available;
+    bool landmarks_available;
+
     // Setup for various histogram values
-    int ch[2];
-    int hist_size[2];
-    float h_ranges[2];
-    float s_ranges[2];
-    const float* ranges[2];
+    // int ch[2];
+    // int hist_size[2];
+    // float h_ranges[2];
+    // float s_ranges[2];
+    // const float* ranges[2];
 
 public:
+    /* GetContract is the Input Handler */
     static ::mediapipe::Status GetContract(CalculatorContract* cc)
     {
-        RET_CHECK(cc->Inputs().HasTag(kLandmarksTag)) << "No input stream provided.";
+        RET_CHECK(cc->Inputs().HasTag(kLandmarksTag)) << "No landmark input stream provided.";
+        RET_CHECK(cc->Inputs().HasTag(kInputFrameTag)) << "No input image stream provided.";
+        RET_CHECK((cc->Inputs().HasTag(kNormRectTag))) << "No norm rect input provided";
+
+        /* If we have an image present then we set the image */
+        if (cc->Inputs().HasTag(kInputFrameTag)) {
+            // RET_CHECK(cc->Outputs().HasTag(kInputFrameTag));
+            cc->Inputs().Tag(kInputFrameTag).Set<ImageFrame>();
+            // cc->Outputs().Tag(kInputFrameTag).Set<ImageFrame>();
+        }
 
         if(cc->Inputs().HasTag(kLandmarksTag))
         {
             cc->Inputs().Tag(kLandmarksTag).Set<NormalizedLandmarkList>();
+        }
+
+        if(cc->Inputs().HasTag(kNormRectTag))
+        {
+            cc->Inputs().Tag(kNormRectTag).Set<NormalizedRect>();
         }
 
         return(::mediapipe::OkStatus());
@@ -253,17 +315,8 @@ public:
 
         forwarder = new udp::client(IP, PORT);
 
-        ch[0] = 0;
-        ch[1] = 1;
-        hist_size[0] = H_BINS;
-        hist_size[1] = S_BINS;
-        h_ranges[0] = 0;
-        h_ranges[1] = 180;
-        s_ranges[0] = 0;
-        s_ranges[1] = 255;
-        ranges[0] = h_ranges;
-        ranges[1] = s_ranges;
-
+        rect_available = false;
+        landmarks_available = false;
         calibrated = false; // uncalibrated histogram initially
 
         return(::mediapipe::OkStatus());
@@ -271,13 +324,114 @@ public:
 
     ::mediapipe::Status Process(CalculatorContext* cc) override
     {
-        string data;
-
-        if(cc->Inputs().Tag(kLandmarksTag).IsEmpty())
-        {
-            return(::mediapipe::OkStatus());
+        /* If we have no image data just return */
+        if (cc->Inputs().Tag(kInputFrameTag).IsEmpty()) {
+            return ::mediapipe::OkStatus();
         }
 
+        if (cc->Inputs().HasTag(kNormRectTag) && cc->Inputs().Tag(kNormRectTag).IsEmpty()) {
+            rect_available = true;
+        } else {
+            rect_available = false;
+        }
+
+        if (cc->Inputs().HasTag(kLandmarksTag) && cc->Inputs().Tag(kLandmarksTag).IsEmpty()) {
+            landmarks_available = true;
+        } else {
+            landmarks_available = false;
+        }
+
+
+        string data;
+
+        // Load input image
+        const auto& input_img = cc->Inputs().Tag(kInputFrameTag).Get<ImageFrame>();
+        frame = formats::MatView(&input_img); // frame used further down for CV things
+        dWidth = input_img.Width();
+        dHeight = input_img.Height();
+
+        // if landmarks available get the region to sample
+        if (landmarks_available) {
+            sample_region = get_sample_rect(cc, dWidth, dHeight);
+        }
+        
+        // if MP has a  bounding box for the hand
+        if (rect_available) {
+            // Load normalized rect
+            bbox = get_bounding_box(cc, dWidth, dHeight);
+        }
+
+        
+        if (calibrated == false) {       
+            if (!landmarks_available) {
+                VLOG(1) << "No Landmarks Available to Calibrate with" << cc->InputTimestamp();
+                return ::mediapipe::OkStatus();
+            }
+
+            if (!rect_available) {
+                VLOG(1) << "No Rect Available to Initialize Tracker with" << cc->InputTimestamp();
+                return ::mediapipe::OkStatus();                
+            }   
+
+            cv::GaussianBlur(frame, frame_blurred, Size(BLUR_KERNEL_SIZE, BLUR_KERNEL_SIZE), 0); // Blur image with 5x5 kernel
+            cv::Mat roi = frame_blurred(sample_region); // grab the region of the frame we want
+            cv::cvtColor(roi, hsv_roi, cv::COLOR_BGR2HSV); // convert roi to HSV colour space
+            hand_hist = get_histogram(hsv_roi); // get initial histogram
+
+            calibrated = true; // hand histogram has been calibrated
+            
+            cv::Mat blurred_roi = frame_blurred(bbox); // search bounding region from MPipe
+            hand_tracker.initialise(blurred_roi);
+            initial_area = hand_tracker.old_hand.area;
+
+        } else {
+            cv::GaussianBlur(frame, frame_blurred, Size(BLUR_KERNEL_SIZE, BLUR_KERNEL_SIZE), 0); // Blur image with 5x5 kernel
+            cv::cvtColor(frame_blurred, hsv, cv::COLOR_BGR2HSV); // convert entire frame to hsv colour space
+            // TODO: need to know when
+            // 1. hand is present or absent by checking mediapipe data 
+            // 2. when only frame info is available (i.e. MP at 10 FPS and camera at 30 FPS, there will be times when we only have frame data)
+            if (landmarks_available && rect_available) { // media pipe output available as well as frame info
+                hsv_roi = hsv(sample_region); // for histogram adaption
+                hand_hist = adapt_histogram(hsv_roi, hand_hist); // adapt the histogram
+
+                hand_tracker.update_position(hsv, bbox, true); // true since MP rect is available
+                hand_tracker.new_hand.update_velocity(hand_tracker.old_hand);
+                hand_tracker.old_hand.set_state(hand_tracker.new_hand.centroid, hand_tracker.new_hand.bound, hand_tracker.new_hand.area);
+                hand_tracker.old_hand.velocity = hand_tracker.new_hand.velocity;
+            } else { // only frame information available
+                hand_tracker.update_position(hsv, bbox, false); // pass an empty rect
+                hand_tracker.new_hand.update_velocity(hand_tracker.old_hand);
+                hand_tracker.old_hand.set_state(hand_tracker.new_hand.centroid, hand_tracker.new_hand.bound, hand_tracker.new_hand.area);
+                hand_tracker.old_hand.velocity = hand_tracker.new_hand.velocity;
+            }
+            // Check for failure by checking if area has gotten too big or small compared to initial value
+            if ((hand_tracker.new_hand.area > 2*initial_area) || (hand_tracker.new_hand.area < 0.3*initial_area)) {
+                calibrated = false;
+            } 
+        }
+        
+        
+        forwarder->send(data.c_str(), data.length());
+
+        return(::mediapipe::OkStatus());
+    }
+
+    ::mediapipe::Status Close(CalculatorContext* cc) override
+    {
+        delete forwarder;
+
+        return(::mediapipe::OkStatus());
+    }
+
+    cv::Rect get_sample_rect(const CalculatorContext* cc, int src_width, int src_height) {
+        /*
+        Inputs:
+            cc: calculator context
+            src_width: width of the source frame
+            src_height: height of the source frame
+        Outputs:
+            rect: a CV rect that contains the coordinates of the region to sample for the hand histogram
+        */
         const auto& landmarks = cc->Inputs().Tag(kLandmarksTag).Get<NormalizedLandmarkList>();
 
         int keypoints[] = {0, 1, 5, 9, 13, 17}; 
@@ -295,78 +449,45 @@ public:
         center_x /= size;
         center_y /= size;
 
-        /*
-        if (calibrated == false) {          
-            frame = NULL;
-            frame = frame_from_input; // TODO: convert from input image to cv::Mat
-            cv::GaussianBlur(frame, frame_blurred, Size(BLUR_KERNEL_SIZE, BLUR_KERNEL_SIZE), 0); // Blur image with 5x5 kernel
-            cv::Rect roi_rect (top_left_x, top_left_y, BOX_SIZE, BOX_SIZE);  // TODO: need to get top_left_x and top_left_y from MP keypoints around the palm to sample a rectangle in the middle of the hand
-            cv::Mat roi = frame_blurred(roi_rect) // grab the region of the frame we want
-            cv::cvtColor(roi, hsv_roi, cv::COLOR_BGR2HSV); // convert roi to HSV colour space
-            hand_hist = get_histogram(hsv_roi); // get initial histogram
+        // create rectangle
+        cv::Point top_left (clip(center_x - SAMPLE_BOX_SIZE/2, 0, src_width), clip(center_y - SAMPLE_BOX_SIZE/2, 0, src_height));
+        cv::Point bottom_right (clip(center_x + SAMPLE_BOX_SIZE/2, 0, src_width), clip(center_y + SAMPLE_BOX_SIZE/2, 0, src_height));
+        cv::Rect roi (top_left, bottom_right);
 
-            calibrated = true; // hand histogram has been calibrated
-
-            // Currently uses largest contour by area to initialise the hand
-            cv::cvtColor(frame_blurred, hsv, cv::COLOR_BGR2HSV); // convert entire frame to hsv colour space
-            vector<vector<Point>> conts = get_contours(hsv); // get all contours
-            double max_area = 0.0;
-            vector<Point> max_contour;
-            // find max contour by area
-            for (int it = 0; it < conts.size(); it++) {
-                double area = cv::contourArea(conts[it]);
-                if (area > max_area) {
-                    max_area = area;
-                    max_contour = conts[it];
-                }
-            }
-            cv::Rect bound = cv::boundingRect(max_contour);
-            // Get the centroid
-            cv::Moments m = cv::moments(max_contour);
-            cv::Point centroid (m.m10/m.m00, m.m01/m.m00);
-    
-            // Set the state of the new hand
-            hand_tracker.old_hand.set_state(centroid, bound, max_area);
-            hand_tracker.old_hand.velocity = {0, 0};
-        } else {
-            frame = frame_from_mediapipe; // TODO
-            cv::GaussianBlur(frame, frame_blurred, Size(BLUR_KERNEL_SIZE, BLUR_KERNEL_SIZE), 0); // Blur image with 5x5 kernel
-            cv::cvtColor(frame_blurred, hsv, cv::COLOR_BGR2HSV); // convert entire frame to hsv colour space
-            // TODO: need to know when
-            // 1. hand is present or absent by checking mediapipe data 
-            // 2. when only frame info is available (i.e. MP at 10 FPS and camera at 30 FPS, there will be times when we only have frame data)
-            if (mediapipe_data) { // media pipe output available as well as frame info
-                if (hand_present) { // hand is in the frame 
-                    cv::Rect roi_rect (top_left_x, top_left_y, SAMPLE_BOX_SIZE, SAMPLE_BOX_SIZE);  // TODO: need to get top_left_x and top_left_y from MP keypoints around the palm to sample a rectangle in the middle of the hand
-                    hsv_roi = hsv(roi_rect); // for histogram adaption
-                    hand_hist = adapt_histogram(hsv_roi, hand_hist); // adapt the histogram
-                    cv::Rect roi_mp (top_left_hand_y, top_left_hand_y, hand_width, hand_height); // TODO: unpack MP bbox info to initialize CV rect for hand bounding box
-                    hand_tracker.update_position(hsv, roi_mp, true); // true since MP rect is available
-                    hand_tracker.new_hand.update_velocity(hand_tracker.old_hand);
-                    hand_tracker.old_hand.set_state(hand_tracker.new_hand.centroid, hand_tracker.new_hand.bound, hand_tracker.new_hand.area);
-                    hand_tracker.old_hand.velocity = hand_tracker.new_hand.velocity;
-                } else { // hand is not in the frame will need to recalibrate once it re-enters
-                    calibrated = false;
-                }
-            } else { // only frame information available
-                hand_tracker.update_position(hsv, cv::Rect roi_mp (0, 0, 1, 1), false); // pass an empty rect
-                hand_tracker.new_hand.update_velocity(hand_tracker.old_hand);
-                hand_tracker.old_hand.set_state(hand_tracker.new_hand.centroid, hand_tracker.new_hand.bound, hand_tracker.new_hand.area);
-                hand_tracker.old_hand.velocity = hand_tracker.new_hand.velocity;
-            }
-        }
-        */
-        
-        forwarder->send(data.c_str(), data.length());
-
-        return(::mediapipe::OkStatus());
+        return roi;
     }
 
-    ::mediapipe::Status Close(CalculatorContext* cc) override
-    {
-        delete forwarder;
+    cv::Rect get_bounding_box(const CalculatorContext* cc, int src_width, int src_height) {
+        /*
+        Inputs:
+            cc: calculator context
+            src_width: width of the source frame
+            src_height: height of the source frame
+        Outputs:
+            rect: a CV rect that will represent a bounding box for the hand in the frame by manipulating the normalized rect
+        */
 
-        return(::mediapipe::OkStatus());
+        // by default use the whole frame to search
+        int width = src_width;
+        int height = src_height;
+        int min_x = 0;
+        int min_y = 0;
+
+        const auto& norm_rect = cc->Inputs().Tag(kNormRectTag).Get<NormalizedRect>();
+
+        if (norm_rect.width() > 0.0 && norm_rect.height() > 0.0) {
+            float normalized_width = norm_rect.width();
+            float normalized_height = norm_rect.height();
+            int x_center = std::round(norm_rect.x_center() * src_width);
+            int y_center = std::round(norm_rect.y_center() * src_height);
+            width = std::round(normalized_width * src_width);
+            height = std::round(normalized_height * src_height);
+            min_x = std::round(x_center - width/2); 
+            min_y = std::round(y_center - height/2);
+        } 
+        
+        cv::Rect roi (min_x, min_y, width, height);
+        return roi;
     }
 };
 
