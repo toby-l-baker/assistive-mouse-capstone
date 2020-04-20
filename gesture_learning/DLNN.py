@@ -6,22 +6,24 @@ Author: Ayusman Saha
 """
 import os
 import argparse
+
 import numpy as np
-import keypoints as kp
 import matplotlib.pyplot as plt
 from keras import models, layers, utils
 
+import keypoints as kp
+
 EPOCHS = 100                # number of epochs to train the model
-BATCH_SIZE = 16             # training data batch size
-NORMALIZATION = 'polar'     # type of data normalization
+BATCH_SIZE = 32             # training data batch size
+NORMALIZATION = 'features'  # type of data normalization
 
 def plot_training(epochs, results):
     plt.subplots(2)
 
     # loss
     plt.subplot(2, 1, 1)  
-    plt.plot(epochs, results['loss'], '--b', label="Training")
-    plt.plot(epochs, results['val_loss'], '-g', label="Validation")
+    plt.plot(epochs, results['loss'], '--', label="Training")
+    plt.plot(epochs, results['val_loss'], '-', label="Validation")
     plt.title('Model Performance')
     plt.ylabel('Loss')
     plt.grid()
@@ -29,8 +31,8 @@ def plot_training(epochs, results):
 
     # accuracy
     plt.subplot(2, 1, 2)  
-    plt.plot(epochs, results['acc'], '--b', label="Training")
-    plt.plot(epochs, results['val_acc'], '-g', label="Validation")
+    plt.plot(epochs, results['acc'], '--', label="Training")
+    plt.plot(epochs, results['val_acc'], '-', label="Validation")
     plt.xlabel('Epoch')
     plt.ylabel('Accuracy')
     plt.grid()
@@ -93,17 +95,17 @@ def k_fold_cross_validation(data, labels, epochs, batch_size, K=4):
     return results
 
 def main(args):
-    assert args.save is None or os.path.splitext(args.save)[1] == '.h5'
+    assert args.model is None or os.path.splitext(args.model)[1] == '.h5'
 
     # process file
     with open(args.dataset, 'r') as f:
-        train, test = kp.parse(f, shuffle=True, normalization=NORMALIZATION)
+        train, test = kp.parse(f, normalization='features', shuffle=True)
 
     # format training set
     train.data = kp.dataset.normalize(train.data, train.mean, train.std)
     train.labels = utils.to_categorical(train.labels)
 
-    if args.save is None:
+    if args.model is None:
         # perform K-fold cross-validation
         results = k_fold_cross_validation(train.data, train.labels, EPOCHS, BATCH_SIZE)
 
@@ -117,14 +119,14 @@ def main(args):
         model.fit(train.data, train.labels, epochs=EPOCHS, batch_size=BATCH_SIZE)
 
         # save model
-        model.save(args.save)
+        model.save(args.model)
 
         # save data normalization parameters
-        np.savez_compressed(args.save.replace('.h5', '.npz'), mean=train.mean, std=train.std)
+        np.savez_compressed(args.model.replace('.h5', '.npz'), mean=train.mean, std=train.std)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('dataset')
-    parser.add_argument('-s', '--save', metavar='model')
+    parser.add_argument('-m', '--model', metavar='model')
     args = parser.parse_args()
     main(args)

@@ -5,9 +5,11 @@ Description: Template for gesture recognition via machine learning
 Author: Ayusman Saha
 """
 import sys
+
 import numpy as np
-import keypoints as kp
 import matplotlib.pyplot as plt
+
+import keypoints as kp
 
 # --------------------------------------------------------------------------------------------------
 
@@ -44,7 +46,7 @@ def main(args):
 
     train.labels contains integers corresponding to different gestures. Each data entry has a
     corresponding label arranged such that train.data[i] is categorized by train.labels[i].
-    Currently, the gesture classes are:
+    Currently, the gesture classes for the 'fourClass' dataset are:
         0 - CLOSE
         1 - OK
         2 - OPEN

@@ -127,14 +127,14 @@ def parse(f, shuffle=False, normalization=None, split=None):
     if shuffle is True:
         data, labels = dataset.shuffle(data, labels)        
 
-    for index, entry in enumerate(data):
-        if normalization == 'cartesian':
-            data[index] = normalize_cartesian(entry)
-        elif normalization == 'polar':
-            data[index] = normalize_polar(entry)
-
-    if normalization is not None:
+    if normalization == 'cartesian':
+        data = np.apply_along_axis(normalize_cartesian, 1, data)
         data = data[:, 2:]
+    elif normalization == 'polar':
+        data = np.apply_along_axis(normalize_polar, 1, data)
+        data = data[:, 2:]
+    elif normalization == 'features':
+        data = np.apply_along_axis(keypointsToFeatures, 1, data)
 
     if split is not None:
         split = int(data.shape[0] * split)
@@ -150,3 +150,42 @@ def parse(f, shuffle=False, normalization=None, split=None):
 def display(keypoints):
     for index, keypoint in enumerate(keypoints):
         print("keypoint[" + str(index) + "] = " + str(keypoint))
+
+'''
+This function will convert a set of keypoints to a set of features.
+param keypoints: numpy array of 21 (x,y) keypoints
+return features: numpy array of 20 features
+'''
+def keypointsToFeatures(keypoints):
+    # construct feature matirx
+    features = np.zeros(20)
+
+    # distance ratio features
+    for i in range(5):
+        denominator = (keypoints[8*(i+1) - 1] - keypoints[0])**2 + (keypoints[8*(i+1)] - keypoints[1])**2  # distance from tip to palm
+        for j in range(3):
+            numerator = (keypoints[8*i + 2*j + 1] - keypoints[0])**2 + (keypoints[8*i + 2*j + 2] - keypoints[1])**2  # distance from root/mid1/mid2 to palm
+            ratio = np.sqrt(numerator) / np.sqrt(denominator)
+            features[i*3 + j] = ratio
+            # features[i*3 + j] = ratio * 10  # 10 times to make more spearable?
+
+    # finger number feature
+    for i in range(len(features)):
+        features[15] = sum(features[3 : 15 : 4] <= 1) * 10  # stretch finger number, weighted by 10
+
+    # angle features
+    for i in range(4):  # four pairs
+        x1 = np.array([keypoints[8*(i+1) - 1] - keypoints[0], keypoints[8*(i+1)] - keypoints[1]], dtype=np.float32).T
+        x2 = np.array([keypoints[8*(i+2) - 1] - keypoints[0], keypoints[8*(i+2)] - keypoints[1]], dtype=np.float32).T
+        cos = np.sum(x1*x2) / (np.sqrt(np.sum(x1**2)) * np.sqrt(np.sum(x2**2)))  # caculate cos(theta)
+
+        # when zero angle, it is possible
+        if cos > 1:
+            cos = 1
+        elif cos < -1:
+            cos = -1
+        features[16 + i] = (np.arccos(cos) / np.pi * 180)
+        # features[16 + i] = (np.arccos(cos) / np.pi * 180)**2  # Note: use quadratic here
+
+    # return feature matrix
+    return features

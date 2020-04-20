@@ -160,13 +160,13 @@ node {
 
 # Takes in an image, landmarks and norm rect and runs hand tracking on a CPU
 # Stored in calculators/util/hand_tracking_calculator.cc 
-node {
-  calculator: "HandTrackingCalculator"
-  input_stream: "IMAGE:input_video"
-  input_stream: "NORM_RECT:hand_rect"
-  input_stream: "NORM_LANDMARKS:hand_landmarks"
+#node {
+#  calculator: "HandTrackingCalculator"
+#  input_stream: "IMAGE:input_video"
+#  input_stream: "NORM_RECT:hand_rect"
+#  input_stream: "NORM_LANDMARKS:hand_landmarks"
   # output_stream: "HAND_STATE:hand_state"
-}
+#}
 
 # Converts hand landmarks to a detection that tightly encloses all landmarks.
 node {

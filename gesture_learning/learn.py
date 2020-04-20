@@ -254,7 +254,7 @@ def RF_train(feature_train, label_train, feature_test, label_test, filename=None
         df = pa.DataFrame(prediction_test)
         df.to_csv(filename, index=False)
 
-feature_train, label_train, feature_test, label_test = generateTrainAndTest('./dataset/fiveClass')
+feature_train, label_train, feature_test, label_test = generateTrainAndTest('./data/fiveClass')
 # KMean algorithms
 K_means_train(feature_train, label_train, feature_test, label_test, 5)
 # EM algorithms
