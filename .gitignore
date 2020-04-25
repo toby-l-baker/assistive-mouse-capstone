@@ -11,3 +11,6 @@ mediapipe/mediapipe/MediaPipe.tulsiproj/*.tulsiconf-user
 .vscode/
 cameramousecpp/CMakeFiles/
 cameramousecpp/CMakeCache.txt
+cameramouse/__pycache__/*
+cameramouse/*.pyc
+hand_tracking/__pycache__/*
