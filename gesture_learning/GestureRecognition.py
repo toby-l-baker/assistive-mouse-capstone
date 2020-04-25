@@ -7,11 +7,12 @@ Author: Ayusman Saha
 import os
 import argparse
 import socket
+
 import numpy as np
-import keypoints as kp
 import joblib
 from keras import models
-from Unsupervised import keypointsToFeatures
+
+import keypoints as kp
 
 IP = 'localhost'    # IP address of MediaPipe UDP client
 PORT = 2000         # port number of MediaPipe UDP client
@@ -123,35 +124,32 @@ def main(args):
     sock.bind((IP, PORT))
 
     while True:
-        # receive keypoints over UDP
-        data, addr = sock.recvfrom(MAX_BYTES)
-        keypoints = kp.decode(data)
+        try:
+            # receive keypoints over UDP
+            data, addr = sock.recvfrom(MAX_BYTES)
+            keypoints = kp.decode(data)
 
-        if keras_model is True:
-            # normalize keypoints
-            keypoints = kp.normalize_polar(keypoints)[1:, :-1].flatten()
-            keypoints = kp.dataset.normalize(keypoints.reshape((1, -1)), mean, std)
-
-            # predict gesture
-            output = model.predict(keypoints)[0]
-            gesture = np.argmax(output)
-        
-            # display gesture
-            display(gesture, output, keras_model)
-        
-        else:
             # convert keypoints to features
-            features = keypointsToFeatures(keypoints[:, :-1].flatten())
+            features = kp.keypointsToFeatures(keypoints[:, :-1].flatten())
             features = features.reshape((1, -1))
 
-            # predict gesture
+            # skip bad data
             if np.isnan(np.sum(features)):
-                gesture = -1
+                continue
+
+            # predict gesture
+            if keras_model is True:
+                features = kp.dataset.normalize(features, mean, std)
+                output = model.predict(features)[0]
+                gesture = np.argmax(output)
+                #display(gesture, output, keras_model)
+                print(gesture)
             else:
                 gesture = model.predict(features)[0]
-
-            # display gesture
-            display(gesture, None, keras_model)
+                display(gesture, None, keras_model)
+        except KeyboardInterrupt:
+            print("")
+            break;
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(add_help=False)
