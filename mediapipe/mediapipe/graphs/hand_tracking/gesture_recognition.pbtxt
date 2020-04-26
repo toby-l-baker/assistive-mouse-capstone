@@ -95,6 +95,8 @@ node {
   input_stream: "LANDMARKS:hand_landmarks"
   input_stream: "NORM_RECT:hand_rect"
   input_stream: "DETECTIONS:palm_detections"
+  input_stream: "RECTS:hand_rects"
+  input_stream: "LANDMARK:hand_centroid"
   output_stream: "IMAGE:output_video"
 }
 
@@ -104,9 +106,13 @@ node {
   input_stream: "LANDMARKS:hand_landmarks"
 }
 
-#node {
-#  calculator: "HandTrackingCalculator"
-#  input_stream: "IMAGE:input_video"
-#  input_stream: "NORM_RECT:hand_rect"
-#  input_stream: "LANDMARKS:hand_landmarks"
-#}
+# Takes in an image, landmarks and norm rect and runs hand tracking on a CPU
+# Stored in calculators/util/hand_tracking_calculator.cc 
+node {
+ calculator: "HandTrackingCalculator"
+ input_stream: "IMAGE:input_video"
+ input_stream: "NORM_RECT:hand_rect"
+ input_stream: "LANDMARKS:hand_landmarks"
+ output_stream: "LANDMARK:hand_centroid"
+ output_stream: "RECTS:hand_rects"
+}

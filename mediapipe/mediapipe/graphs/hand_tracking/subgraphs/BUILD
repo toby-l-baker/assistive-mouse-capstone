@@ -110,6 +110,7 @@ mediapipe_simple_subgraph(
         "//mediapipe/calculators/util:landmarks_to_render_data_calculator",
         "//mediapipe/calculators/util:rect_to_render_data_calculator",
         "//mediapipe/calculators/util:gesture_to_render_data_calculator",
+        "//mediapipe/calculators/util:centroid_to_render_data_calculator",
     ],
 )
 
