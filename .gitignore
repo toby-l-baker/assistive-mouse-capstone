@@ -9,8 +9,8 @@ mediapipe/mediapipe/provisioning_profile.mobileprovision
 mediapipe/mediapipe/MediaPipe.xcodeproj
 mediapipe/mediapipe/MediaPipe.tulsiproj/*.tulsiconf-user
 .vscode/
-cameramousecpp/CMakeFiles/
-cameramousecpp/CMakeCache.txt
+
+cameramousecpp/build/
 cameramouse/__pycache__/*
 cameramouse/*.pyc
 hand_tracking/__pycache__/*
