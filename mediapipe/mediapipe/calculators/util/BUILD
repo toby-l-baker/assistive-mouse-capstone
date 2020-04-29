@@ -1194,3 +1194,18 @@ cc_library(
     ],
     alwayslink = 1,
 )
+
+cc_library(
+    name = "centroid_to_render_data_calculator",
+    srcs = ["centroid_to_render_data_calculator.cc"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//mediapipe/framework:calculator_framework",
+        "//mediapipe/framework:calculator_options_cc_proto",
+        "//mediapipe/framework/formats:landmark_cc_proto",
+        "//mediapipe/framework/port:ret_check",
+        "//mediapipe/util:color_cc_proto",
+        "//mediapipe/util:render_data_cc_proto",
+    ],
+    alwayslink = 1,
+)

@@ -28,7 +28,7 @@ def tSNE(train, label, filename, k=None):
     It converts similarities between data points to joint probabilities and tries to minimize the Kullback-Leibler divergence 
     between the joint probabilities of the low-dimensional embedding and the high-dimensional data
     '''
-    embedded = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=1000).fit_transform(train)
+    embedded = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=500).fit_transform(train)
     # embedded = TSNE(n_components=2).fit_transform(train)
     df = pa.DataFrame(train)
     df['label'] = label
@@ -53,13 +53,13 @@ Raw data:
 Each line is corresponding to one image.
 Each line has 21x2 numbers, which indicates (x, y) of 21 joint locations. Note that these are joint CENTRE locations.
 Note that (x, y) are already normalized by the palm key point.
-The order of 16 joints is Palm, Thumb root, Thumb mid1, Thumb mid2, Thumb tip, Index root, Thumb mid1, Thumb mid2, Index tip, 
+The order of 21 joints is Palm, Thumb root, Thumb mid1, Thumb mid2, Thumb tip, Index root, Thumb mid1, Thumb mid2, Index tip, 
 Middle root, Middle mid1, Middle mid2, Middle tip, Ring root, Ring mid1, Ring mid2, Ring tip, Pinky root, Pinky mid1, Pinky mid2, Pinky tip.
 
 Revised data:
 Each line is corresponding to one image.
-Each line has 14 numbers.
-The order of 16 joints is ratio of distance of (root, mid) / distance of tip of (Thumb, Index, Middle, Ring, Pinky); angle between fingers.
+Each line has 20 numbers.
+The order of 20 numbers is ratio of distance of (root, mid) / distance of tip of (Thumb, Index, Middle, Ring, Pinky); finger count; angle between fingers.
 
 param file: raw data file path
 param n: the number of samples we using; default None, use all samples
@@ -85,7 +85,7 @@ def generateTrainAndTest(file, n=None):
     # finger number feature
     for i in range(len(feature)):
         temp = feature[i, :]
-        feature[i, 15] = sum(temp[3 : 15 : 4] <= 1) * 10  # stretch finger number, weighted by 10
+        feature[i, 15] = sum(temp[2 : 15 : 3] <= 1) * 10  # stretch finger number, weighted by 10
     # angle features
     for i in range(4):  # four pairs
         x1 = np.array([data[:, 8*(i+1) - 1] - data[:, 0], data[:, 8*(i+1)] - data[:, 1]], dtype=np.float32).T
@@ -110,14 +110,15 @@ def generateTrainAndTest(file, n=None):
 def getAccuracy(prediction, truth, funcName):
     n = len(prediction)
     acc = sum(prediction == truth) / n * 100
-    print("The accuracy of " + funcName + " is " + str(acc) + "%")
-    return
+    # print("The accuracy of " + funcName + " is " + str(acc) + "%")
+    return acc
 
 def unsupervisedMetrics(feature, prediction):
     chIndex = metrics.calinski_harabasz_score(feature, prediction)  # Calinski-Harabasz Index; a higher Calinski-Harabasz score relates to a model with better defined clusters
     dbIndex = metrics.davies_bouldin_score(feature, prediction)  # Davies-Bouldin index; a lower Davies-Bouldin index relates to a model with better separation between the clusters
     siScode = metrics.silhouette_score(feature, prediction, metric='euclidean')  # Silhouette Coefficient score; a higher Silhouette Coefficient score relates to a model with better defined clusters
-    print("ch: " + str(chIndex) + ", db: " + str(dbIndex) + ", si: " + str(siScode))
+    # print("ch: " + str(chIndex) + ", db: " + str(dbIndex) + ", si: " + str(siScode))
+    return chIndex, dbIndex, siScode
 
 def unsupervisedReorder(feature, label, prediction, k):
     # sort label and prediction
@@ -173,19 +174,20 @@ def K_means_train(feature_train, label_train, feature_test, label_test, k, filen
     # Train accuracy
     prediction_train = km.predict(feature_train)
     feature_train, label_train, prediction_train = unsupervisedReorder(feature_train, label_train, prediction_train, k)
-    getAccuracy(prediction_train, label_train, "Kmeans Train")
+    train_acc = getAccuracy(prediction_train, label_train, "Kmeans Train")
     # Test accuracy
     prediction_test = km.predict(feature_test)
     feature_test, label_test, prediction_test = unsupervisedReorder(feature_test, label_test, prediction_test, k)
-    getAccuracy(prediction_test, label_test, "Kmeans Test")
+    test_acc = getAccuracy(prediction_test, label_test, "Kmeans Test")
     # check index
-    unsupervisedMetrics(feature_test, prediction_test)
+    ch, db, si = unsupervisedMetrics(feature_test, prediction_test)
     # save model
     joblib.dump(km, './models/KMEANS.sav')  # dump the Kmean model
     # write to csv
     if filename:
         df = pa.DataFrame(prediction_test)
         df.to_csv(filename, index=False)
+    return test_acc, ch, db, si
 
 '''
 K_means algorithms; use validation to find the best K
@@ -221,19 +223,20 @@ def EM_train(feature_train, label_train, feature_test, label_test, k, filename=N
     # Train accuracy
     prediction_train = gmm.predict(feature_train)
     feature_train, label_train, prediction_train = unsupervisedReorder(feature_train, label_train, prediction_train, k)
-    getAccuracy(prediction_train, label_train, "GMM Train")
+    train_acc = getAccuracy(prediction_train, label_train, "GMM Train")
     # Test accuracy
     prediction_test = gmm.predict(feature_test)
     feature_test, label_test, prediction_test = unsupervisedReorder(feature_test, label_test, prediction_test, k)
-    getAccuracy(prediction_test, label_test, "GMM Test")
+    test_acc = getAccuracy(prediction_test, label_test, "GMM Test")
     # check index
-    unsupervisedMetrics(feature_test, prediction_test)
+    ch, db, si = unsupervisedMetrics(feature_test, prediction_test)
     # save model
     joblib.dump(gmm, './models/GMM.sav')  # dump the Kmean model
     # write to csv
     if filename:
         df = pa.DataFrame(prediction_test)
         df.to_csv(filename, index=False)
+    return test_acc, ch, db, si
 
 '''
 Random Forest with aggregated feature
@@ -243,23 +246,48 @@ def RF_train(feature_train, label_train, feature_test, label_test, filename=None
     rf.fit(feature_train, label_train)
     # Train accuracy
     prediction_train = rf.predict(feature_train)
-    getAccuracy(prediction_train, label_train, "RF Train")
+    trian_acc = getAccuracy(prediction_train, label_train, "RF Train")
     # Test accuracy
     prediction_test = rf.predict(feature_test)
-    getAccuracy(prediction_test, label_test, "RF Test")
+    test_acc = getAccuracy(prediction_test, label_test, "RF Test")
     # save model
     joblib.dump(rf, './models/RF.sav')  # dump the Kmean model
     # write to csv
     if filename:
         df = pa.DataFrame(prediction_test)
         df.to_csv(filename, index=False)
+    return test_acc
 
-feature_train, label_train, feature_test, label_test = generateTrainAndTest('./data/fiveClass')
+
+feature_train, label_train, feature_test, label_test = generateTrainAndTest('./dataset/fiveClass')
+epoches = 1
 # KMean algorithms
-K_means_train(feature_train, label_train, feature_test, label_test, 5)
+# acc, ch, db, si = 0, 0, 0, 0
+# for i in range(epoches):
+#     a, c, d, s = K_means_train(feature_train, label_train, feature_test, label_test, 5)
+#     acc += a
+#     ch += c
+#     db += d
+#     si += s
+# print("The accuracy of KMean is " + str(acc/epoches) + "%")
+# print("ch: " + str(ch/epoches) + ", db: " + str(db/epoches) + ", si: " + str(si/epoches))
+
 # EM algorithms
-EM_train(feature_train, label_train, feature_test, label_test, 5)
+# acc, ch, db, si = 0, 0, 0, 0
+# for i in range(epoches):
+#     a, c, d, s = EM_train(feature_train, label_train, feature_test, label_test, 5)
+#     acc += a
+#     ch += c
+#     db += d
+#     si += s
+# print("The accuracy of GMM is " + str(acc/epoches) + "%")
+# print("ch: " + str(ch/epoches) + ", db: " + str(db/epoches) + ", si: " + str(si/epoches))
+
 # Random Forest algorithms
-RF_train(feature_train, label_train, feature_test, label_test)
+acc = 0
+for i in range(epoches):
+    acc += RF_train(feature_train, label_train, feature_test, label_test)
+print("The accuracy of RF is " + str(acc/epoches) + "%")
+
 # plot tSNE
-tSNE(feature_train, label_train, './tSNE_5.jpg', 5)
+# tSNE(feature_train, label_train, './tSNE_5.jpg', 5)

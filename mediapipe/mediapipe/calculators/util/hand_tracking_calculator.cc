@@ -37,11 +37,6 @@ using namespace std;
 
 /*** GLOBALS ***/
 
-// For drawing on frames
-// cv::Scalar blue (255, 0, 0);
-// cv::Scalar green (0, 255, 0);
-// cv::Scalar red (0, 0, 255);
-
 // width and height of the frame
 double dHeight;
 double dWidth;
@@ -55,6 +50,11 @@ int hist_size[] = {H_BINS, S_BINS};
 float h_ranges[] = {0, 180};
 float s_ranges[] = {0, 255};
 const float* ranges[] = { h_ranges, s_ranges };
+
+// For drawing on frames
+cv::Scalar blue (255, 0, 0);
+cv::Scalar green (0, 255, 0);
+cv::Scalar red (0, 0, 255);
 
 /*** Helper Functions ***/
 
@@ -144,7 +144,7 @@ class HandTracker {
         Hand old_hand;
         Hand new_hand;
         cv::Rect predict_position(void); // predicts a region where the hand will be based on the prior velocity
-        void update_position(cv::Mat, cv::Rect roi_mp, bool mp_available); // locates the hand in the bounded region defined by predict_position
+        cv::Rect update_position(cv::Mat, cv::Rect roi_mp, bool mp_available); // locates the hand in the bounded region defined by predict_position
         void initialise(cv::Mat frame);
 } tracker;
 
@@ -165,16 +165,25 @@ cv::Rect HandTracker::predict_position() {
 }
 
 // Returns a hand struct of where the hand is in the frame currently
-void HandTracker::update_position(cv::Mat frame, cv::Rect roi_mp, bool mp_available) {
-
+cv::Rect HandTracker::update_position(cv::Mat frame, cv::Rect roi_mp, bool mp_available) {
+    // // To fix crashing
+    // int width = clip(roi_mp.width, 0, dWidth-1);
+    // int height = clip(roi_mp.height, 0, dHeight-1);
     cv::Rect roi (roi_mp.x, roi_mp.y, roi_mp.width, roi_mp.height);
-    
+
     if (mp_available == false) {
         roi = predict_position();
     }
-
-    vector<vector<Point>> contours = get_contours(frame(roi)); // this will be in local coords
-
+    vector<vector<Point>> contours;
+    try {
+        contours = get_contours(frame(roi)); // this will be in local coords
+    } catch (const std::exception& e) {
+        roi.x = 0;
+        roi.y = 0;
+        roi.width = dWidth-1;
+        roi.height = dHeight-1;
+        contours = get_contours(frame(roi)); // this will be in local coords
+    }
     // Currently uses largest contour by area
     double max_area = 0.0;
     vector<Point> max_contour;
@@ -199,6 +208,8 @@ void HandTracker::update_position(cv::Mat frame, cv::Rect roi_mp, bool mp_availa
 
     // Set the state of the new hand
     new_hand.set_state(centroid, bound, max_area);
+
+    return roi;
 }
 
 void HandTracker::initialise(cv::Mat frame) {
@@ -231,8 +242,10 @@ namespace mediapipe {
 namespace {
 constexpr char kInputFrameTag[] = "IMAGE";
 constexpr char kLandmarksTag[] = "LANDMARKS";
-// constexpr char kRectTag[] = "RECT";
+constexpr char kLandmarkTag[] = "LANDMARK";
+constexpr char kRectTag[] = "RECT";
 constexpr char kNormRectTag[] = "NORM_RECT";
+constexpr char kRectsTag[] = "RECTS";
 constexpr char kHeightTag[] = "HEIGHT";
 // constexpr char kImageTag[] = "IMAGE";
 // constexpr char kImageGpuTag[] = "IMAGE_GPU";
@@ -252,18 +265,15 @@ private:
     cv::Mat hsv;
     cv::Mat hsv_roi; 
     HandTracker hand_tracker;
-    cv::Rect sample_region;
+    cv::Rect sample_region; // for taking samples of skin colour
     cv::Rect bbox;
+    cv::Rect prediction;
     double initial_area; // initial area of the hand - used to detect failures
-    // no need for VideoCapture(0); or cap.set(cv::CAP_PROP_FPS, 30);
-
-    // no need for dWidth or dHeight, use MP keypoints for sampling/initializing
-
-    // Hand Histogram
-    cv::Mat hand_hist;
 
     bool rect_available;
     bool landmarks_available;
+
+    int hand_lost;
 
     // Setup for various histogram values
     // int ch[2];
@@ -297,6 +307,14 @@ public:
             cc->Inputs().Tag(kNormRectTag).Set<NormalizedRect>();
         }
 
+        if (cc->Outputs().HasTag(kRectsTag)) {
+            cc->Outputs().Tag(kRectsTag).Set<std::vector<Rect>>();
+        }
+
+        if (cc->Outputs().HasTag(kLandmarkTag)) {
+            cc->Outputs().Tag(kLandmarkTag).Set<Landmark>();
+        }
+
         return(::mediapipe::OkStatus());
     }
 
@@ -318,6 +336,7 @@ public:
         rect_available = false;
         landmarks_available = false;
         calibrated = false; // uncalibrated histogram initially
+        hand_lost = 0;
 
         return(::mediapipe::OkStatus());
     }
@@ -329,13 +348,21 @@ public:
             return ::mediapipe::OkStatus();
         }
 
-        if (cc->Inputs().HasTag(kNormRectTag) && cc->Inputs().Tag(kNormRectTag).IsEmpty()) {
+        // Load input image
+        const auto& input_img = cc->Inputs().Tag(kInputFrameTag).Get<ImageFrame>();
+        frame = formats::MatView(&input_img); // frame used further down for CV things
+        dWidth = frame.size().width;
+        dHeight = frame.size().height;
+
+        if (cc->Inputs().HasTag(kNormRectTag) && !cc->Inputs().Tag(kNormRectTag).IsEmpty()) {
+            // if (hand_present_rect(cc, dWidth, dHeight)) {
             rect_available = true;
         } else {
             rect_available = false;
         }
 
-        if (cc->Inputs().HasTag(kLandmarksTag) && cc->Inputs().Tag(kLandmarksTag).IsEmpty()) {
+        if (cc->Inputs().HasTag(kLandmarksTag) && !cc->Inputs().Tag(kLandmarksTag).IsEmpty()) {
+            // if (hand_present_landmark(cc, dWidth, dHeight)) {
             landmarks_available = true;
         } else {
             landmarks_available = false;
@@ -344,25 +371,40 @@ public:
 
         string data;
 
-        // Load input image
-        const auto& input_img = cc->Inputs().Tag(kInputFrameTag).Get<ImageFrame>();
-        frame = formats::MatView(&input_img); // frame used further down for CV things
-        dWidth = input_img.Width();
-        dHeight = input_img.Height();
-
         // if landmarks available get the region to sample
         if (landmarks_available) {
             sample_region = get_sample_rect(cc, dWidth, dHeight);
+            if ((sample_region.width == 15) && (sample_region.height == 15)) {
+                landmarks_available = false;
+            }
         }
         
         // if MP has a  bounding box for the hand
         if (rect_available) {
             // Load normalized rect
             bbox = get_bounding_box(cc, dWidth, dHeight);
+            if ((bbox.width == dWidth-1) && (bbox.height == dHeight-1)) {
+                rect_available = false;
+            }
         }
 
-        
-        if (calibrated == false) {       
+        /* CHECK IF THE HAND IS GONE */
+        if ((!rect_available) && (!landmarks_available)) {
+            hand_lost++;
+        } else {
+            hand_lost = 0;
+        }
+
+        if (hand_lost > 5) {
+            calibrated = false;
+        }
+        /* For displaying rectangles */
+        int num_rects = 1;
+        if (landmarks_available) {
+            num_rects = 2;
+        }
+
+        if (calibrated == false) {
             if (!landmarks_available) {
                 VLOG(1) << "No Landmarks Available to Calibrate with" << cc->InputTimestamp();
                 return ::mediapipe::OkStatus();
@@ -377,13 +419,11 @@ public:
             cv::Mat roi = frame_blurred(sample_region); // grab the region of the frame we want
             cv::cvtColor(roi, hsv_roi, cv::COLOR_BGR2HSV); // convert roi to HSV colour space
             hand_hist = get_histogram(hsv_roi); // get initial histogram
-
             calibrated = true; // hand histogram has been calibrated
             
             cv::Mat blurred_roi = frame_blurred(bbox); // search bounding region from MPipe
             hand_tracker.initialise(blurred_roi);
             initial_area = hand_tracker.old_hand.area;
-
         } else {
             cv::GaussianBlur(frame, frame_blurred, Size(BLUR_KERNEL_SIZE, BLUR_KERNEL_SIZE), 0); // Blur image with 5x5 kernel
             cv::cvtColor(frame_blurred, hsv, cv::COLOR_BGR2HSV); // convert entire frame to hsv colour space
@@ -393,24 +433,38 @@ public:
             if (landmarks_available && rect_available) { // media pipe output available as well as frame info
                 hsv_roi = hsv(sample_region); // for histogram adaption
                 hand_hist = adapt_histogram(hsv_roi, hand_hist); // adapt the histogram
-
-                hand_tracker.update_position(hsv, bbox, true); // true since MP rect is available
+                /* Update where we are */
+                prediction = hand_tracker.update_position(hsv, bbox, true); // true since MP rect is available
                 hand_tracker.new_hand.update_velocity(hand_tracker.old_hand);
                 hand_tracker.old_hand.set_state(hand_tracker.new_hand.centroid, hand_tracker.new_hand.bound, hand_tracker.new_hand.area);
                 hand_tracker.old_hand.velocity = hand_tracker.new_hand.velocity;
             } else { // only frame information available
-                hand_tracker.update_position(hsv, bbox, false); // pass an empty rect
+                prediction = hand_tracker.update_position(hsv, bbox, false); // pass an empty rect
                 hand_tracker.new_hand.update_velocity(hand_tracker.old_hand);
                 hand_tracker.old_hand.set_state(hand_tracker.new_hand.centroid, hand_tracker.new_hand.bound, hand_tracker.new_hand.area);
                 hand_tracker.old_hand.velocity = hand_tracker.new_hand.velocity;
             }
-            // Check for failure by checking if area has gotten too big or small compared to initial value
-            if ((hand_tracker.new_hand.area > 2*initial_area) || (hand_tracker.new_hand.area < 0.3*initial_area)) {
-                calibrated = false;
-            } 
-        }
-        
-        
+            auto output_rects = absl::make_unique<std::vector<Rect>>(num_rects);
+            auto output_landmark = absl::make_unique<Landmark>();
+            
+            if (!landmarks_available) {
+                convert_bbox(hand_tracker.new_hand.bound, &(output_rects->at(0)));
+            } else {
+                convert_bbox(hand_tracker.new_hand.bound, &(output_rects->at(0)));
+                convert_bbox(sample_region, &(output_rects->at(1)));
+            }
+
+            convert_centroid(hand_tracker.new_hand.centroid, output_landmark.get());
+            cc->Outputs().Tag(kRectsTag).Add(output_rects.release(), cc->InputTimestamp());
+            cc->Outputs().Tag(kLandmarkTag).Add(output_landmark.release(), cc->InputTimestamp());
+            // cout << "Hand Vel: " << hand_tracker.new_hand.centroid << endl;
+            // cv::rectangle(frame_blurred, hand_tracker.new_hand.bound, red, 2);
+            // cv::rectangle(frame_blurred, prediction, green, 2);
+            // cv::rectangle(frame_blurred, sample_region, blue, 2);
+            // cv::circle(frame_blurred, hand_tracker.new_hand.centroid, 5, blue, -1);
+            // cv::imshow("Feed", frame_blurred);
+        } 
+
         forwarder->send(data.c_str(), data.length());
 
         return(::mediapipe::OkStatus());
@@ -442,8 +496,8 @@ public:
         for(int i = 0; i < size; i++)
         {
             const NormalizedLandmark& keypoint = landmarks.landmark(keypoints[i]);
-            center_x += keypoint.x();
-            center_y += keypoint.y();
+            center_x += keypoint.x()*src_width;
+            center_y += keypoint.y()*src_height;
         }
 
         center_x /= size;
@@ -468,10 +522,10 @@ public:
         */
 
         // by default use the whole frame to search
-        int width = src_width;
-        int height = src_height;
-        int min_x = 0;
-        int min_y = 0;
+        int width = src_width-1;
+        int height = src_height-1;
+        int min_x = 1;
+        int min_y = 1;
 
         const auto& norm_rect = cc->Inputs().Tag(kNormRectTag).Get<NormalizedRect>();
 
@@ -483,12 +537,27 @@ public:
             width = std::round(normalized_width * src_width);
             height = std::round(normalized_height * src_height);
             min_x = std::round(x_center - width/2); 
-            min_y = std::round(y_center - height/2);
+            min_y = std::round(y_center - height/2); 
+            min_x = clip(min_x, 0, src_width-width);
+            min_y = clip(min_y, 0, src_height-height);
         } 
         
         cv::Rect roi (min_x, min_y, width, height);
         return roi;
     }
+
+    void convert_bbox(cv::Rect bounding_box, Rect* rect) {
+        rect->set_x_center(bounding_box.x + bounding_box.width / 2);
+        rect->set_y_center(bounding_box.y + bounding_box.height / 2);
+        rect->set_width(bounding_box.width);
+        rect->set_height(bounding_box.height);
+    }
+
+    void convert_centroid(cv::Point centroid, Landmark* landmark) {
+        landmark->set_x(centroid.x);
+        landmark->set_y(centroid.y);
+    }
+
 };
 
 REGISTER_CALCULATOR(HandTrackingCalculator);
