@@ -146,7 +146,8 @@ def main(args):
                 print(gesture)
             else:
                 gesture = model.predict(features)[0]
-                display(gesture, None, keras_model)
+                #display(gesture, None, keras_model)
+                print(gesture)
         except KeyboardInterrupt:
             print("")
             break;
