@@ -1,12 +1,13 @@
 """
 Author: Toby Baker
-Title: Camera class
-Date Created: 25/NOV/2019
+Title: Camera Objects to allow for testing of multiple cameras
+Date Created: 28 Nov 2018
 """
 
 import numpy as np
 import cv2
 import pyrealsense2 as rs
+
 
 class CameraObject():
     """
@@ -32,8 +33,9 @@ class WebcamCamera(CameraObject):
         self.cam = cv2.VideoCapture(src)
         frame = self.capture_color_frame()
         self.width, self.height, _ = frame.shape
-        print("Width: {}, Height: {}".format(self.width, self.height))
-        print("Initialised Webcam")
+        self.im_shape = (self.width, self.height)
+        print("[DEBUG] Image Resolution: Width {}, Height {}".format(self.width, self.height))
+        print("[DEBUG] Initialised Webcam")
 
     def capture_color_frame(self):
         ret, frame = self.cam.read()
@@ -52,8 +54,9 @@ class RealSenseCamera(CameraObject):
         self.pipeline.start(self.config)
         frame = self.capture_color_frame()
         self.height, self.width, _ = frame.shape
-        print("Width: {}, Height: {}".format(self.width, self.height))
-        print("Initialised Realsense")
+        self.im_shape = (self.width, self.height)
+        print("[DEBUG] Image Resolution: Width {}, Height {}".format(self.width, self.height))
+        print("[DEBUG] Initialised Realsense")
 
     def capture_color_frame(self):
         frames = self.pipeline.wait_for_frames()
