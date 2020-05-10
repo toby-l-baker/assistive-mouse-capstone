@@ -27,70 +27,27 @@ def yellow(string):
 def red(string):
     return "\033[91m{}\033[00m".format(string)
             
-def display(gesture, output, keras_model=False):
-    if keras_model is True:
-        string = ""
-
-        if output[gesture] > 0.95:
-            # high accuracy
-            color = green
-        elif output[gesture] > 0.75:
-            # medium accuracy
-            color = yellow
-        else:
-            # low accuracy
-            color = red
-
-        if gesture == 0:
-            # CLOSE
-            string += color("CLOSE") + " ({0:.4f}) | ".format(output[0])
-            string += "OK ({0:.4f}) | ".format(output[1])
-            string += "OPEN ({0:.4f}) | ".format(output[2])
-            string += "CLICK ({0:.4f})".format(output[3])
-        elif gesture == 1:
-            # OK
-            string += "CLOSE ({0:.4f}) | ".format(output[0])
-            string += color("OK") + " ({0:.4f}) | ".format(output[1])
-            string += "OPEN ({0:.4f}) | ".format(output[2])
-            string += "CLICK ({0:.4f})".format(output[3])
-        elif gesture == 2:
-            # OPEN
-            string += "CLOSE ({0:.4f}) | ".format(output[0])
-            string += "OK ({0:.4f}) | ".format(output[1])
-            string += color("OPEN") + " ({0:.4f}) | ".format(output[2])
-            string += "CLICK ({0:.4f})".format(output[3])
-        elif gesture == 3:
-            # CLICK
-            string += "CLOSE ({0:.4f}) | ".format(output[0])
-            string += "OK ({0:.4f}) | ".format(output[1])
-            string += "OPEN ({0:.4f}) | ".format(output[2])
-            string += color("CLICK") + " ({0:.4f})".format(output[3])
-        else:
-            # UNKNOWN
-            string += "CLOSE ({0:.4f}) | ".format(output[0])
-            string += "OK ({0:.4f}) | ".format(output[1])
-            string += "OPEN ({0:.4f}) | ".format(output[2])
-            string += "CLICK ({0:.4f})".format(output[3])
-        
-        print(string, end='\r')
+def display(gesture):
+    if gesture == 0:
+        # CLOSE
+        string = green("CLOSE") + " | OPEN | FINGERS_ONE | FINGERS_TWO | THUMB_BENT"
+    elif gesture == 1:
+        # OPEN
+        string = "CLOSE | " + green("OPEN") + " | FINGERS_ONE | FINGERS_TWO | THUMB_BENT"
+    elif gesture == 2:
+        # FINGERS_ONE
+        string = "CLOSE | OPEN | " + green("FINGERS_ONE") + " | FINGERS_TWO | THUMB_BENT"
+    elif gesture == 3:
+        # FINGERS_TWO
+        string = "CLOSE | OPEN | FINGERS_ONE | " + green("FINGERS_TWO") + " | THUMB_BENT"
+    elif gesture == 4:
+        # THUMB_BENT
+        string = "CLOSE | OPEN | FINGERS_ONE | FINGERS_TWO | " + green("THUMB_BENT")
     else:
-        if gesture == 0:
-            # CLOSE
-            string = green("CLOSE") + " | OK | OPEN | CLICK"
-        elif gesture == 1:
-            # OK
-            string = "CLOSE | " + green("OK") + " | OPEN | CLICK"
-        elif gesture == 2:
-            # OPEN
-            string = "CLOSE | OK | " + green("OPEN") + " | CLICK"
-        elif gesture == 3:
-            # CLICK
-            string = "CLOSE | OK | OPEN | " + green("CLICK")
-        else:
-            # UNKNOWN
-            string = red("CLOSE") + " | " + red("OK") + " | " + red("OPEN") + " | " + red("CLICK")
-        
-        print(string, end='\r')
+        # UNKNOWN
+        string = red("CLOSE") + " | " + red("OPEN") + " | " + red("FINGERS_ONE") + " | " + red("FINGERS_TWO") + " | " + red("THUMB_BENT")
+    
+    print(string, end='\r')
 
 def main(args):
     assert os.path.splitext(args.model)[1] == '.h5' or os.path.splitext(args.model)[1] == '.sav' 
@@ -142,12 +99,11 @@ def main(args):
                 features = kp.dataset.normalize(features, mean, std)
                 output = model.predict(features)[0]
                 gesture = np.argmax(output)
-                #display(gesture, output, keras_model)
-                print(gesture)
             else:
                 gesture = model.predict(features)[0]
-                #display(gesture, None, keras_model)
-                print(gesture)
+            
+            # display gesture
+            display(gesture)
         except KeyboardInterrupt:
             print("")
             break;

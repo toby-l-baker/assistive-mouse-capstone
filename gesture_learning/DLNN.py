@@ -99,7 +99,7 @@ def main(args):
 
     # process file
     with open(args.dataset, 'r') as f:
-        train, test = kp.parse(f, normalization='features', shuffle=True)
+        train, test = kp.parse(f, normalization=NORMALIZATION, shuffle=True)
 
     # format training set
     train.data = kp.dataset.normalize(train.data, train.mean, train.std)

@@ -368,9 +368,6 @@ public:
             landmarks_available = false;
         }
 
-
-        string data;
-
         // if landmarks available get the region to sample
         if (landmarks_available) {
             sample_region = get_sample_rect(cc, dWidth, dHeight);
@@ -464,6 +461,15 @@ public:
             // cv::circle(frame_blurred, hand_tracker.new_hand.centroid, 5, blue, -1);
             // cv::imshow("Feed", frame_blurred);
         } 
+
+        string data;
+
+        data += std::to_string(hand_tracker.new_hand.centroid.x) + ',';
+        data += std::to_string(hand_tracker.new_hand.centroid.y) + ',';
+        data += std::to_string(hand_tracker.new_hand.bound.x) + ',';
+        data += std::to_string(hand_tracker.new_hand.bound.y) + ',';
+        data += std::to_string(hand_tracker.new_hand.bound.width) + ',';
+        data += std::to_string(hand_tracker.new_hand.bound.height) + ';';
 
         forwarder->send(data.c_str(), data.length());
 
