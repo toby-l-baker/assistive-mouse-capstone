@@ -2,7 +2,7 @@
 
 """
 Description: Template for gesture recognition via machine learning
-Author: Ayusman Saha
+Author: Ayusman Saha (aysaha@berkeley.edu)
 """
 import sys
 
