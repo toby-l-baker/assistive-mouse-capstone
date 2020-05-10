@@ -2,7 +2,7 @@
 
 """
 Description: Gesture recognition via MediaPipe keypoints
-Author: Ayusman Saha
+Author: Ayusman Saha (aysaha@berkeley.edu)
 """
 import os
 import argparse
