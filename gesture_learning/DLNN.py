@@ -2,7 +2,7 @@
 
 """
 Description: Deep Learning Neural Network (DLNN) approach for gesture recognition
-Author: Ayusman Saha
+Author: Ayusman Saha (aysaha@berkeley.edu)
 """
 import os
 import argparse
