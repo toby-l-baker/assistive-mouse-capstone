@@ -1,37 +1,14 @@
 """
 Author: Toby Baker
-Title: Interface for dealing with various screen sizes and OS for mouse movement
+Title: Mouse interface to abstract different mouse APIs
 Date Created: 28 Nov 2018
 """
 
-# import pyautogui
-import time # for windows mouse and monitor
 try:
     import win32api, win32con
 except:
     import mouse
     import pyautogui
-    print("cannot import win32api or win32con")
-
-
-class Monitor():
-    '''Class for storing data about the display'''
-    def __init__(self):
-        # Windows only at this stage
-        pass
-
-class WindowsMonitor(Monitor):
-    def __init__(self):
-        super().__init__()
-        self.width = win32api.GetSystemMetrics(0)
-        self.height = win32api.GetSystemMetrics(1)
-        print('Mon Width: %d, Mon Height: %d' % (self.width, self.height))
-
-class LinuxMonitor(Monitor):
-    def __init__(self):
-        super().__init__()
-        self.width, self.height = pyautogui.size()
-        print('Mon Width: %d, Mon Height: %d' % (self.width, self.height))
 
 class Mouse():
     '''Class for each mouse e.g. Winsdows/Linux/MacOS'''
@@ -61,6 +38,7 @@ class Mouse():
 class WindowsMouse(Mouse):
     def __init__(self):
         super().__init__()
+        print("[DEBUG] Windows Mouse Initialized")
 
     def left_click(self):
         self.mouse_down()
@@ -96,6 +74,8 @@ class WindowsMouse(Mouse):
 class LinuxMouse(Mouse):
     def __init__(self):
         super().__init__()
+        print("[DEBUG] Linux Mouse Initialized")
+
 
     def left_click(self):
         self.mouse_down()
@@ -125,3 +105,4 @@ class LinuxMouse(Mouse):
 
     def position(self):
         return mouse.get_position()
+

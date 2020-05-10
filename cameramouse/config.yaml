@@ -1,0 +1,22 @@
+# Gesture params
+gesture: 
+  type: none # options none, keyboard
+
+# OS you are using - Linux and Windows supported
+os: windows # options linux, windows
+
+# Camera params
+camera: 
+  type: realsense # options realsense, webcam
+  src: 0 
+
+# Hand tracker options
+tracking:
+  segmentation: colour # options colour
+  type: basic # options basic
+
+# Cursor control parameters
+control: 
+  type: joystick # options joystick, absolute, relative
+  filter: fir # fir, iir
+  filter_length: 3 # whatever int you like!

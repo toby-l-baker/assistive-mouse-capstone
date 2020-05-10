@@ -5,25 +5,7 @@ Date Created: 28/NOV/2019
 """
 
 import keyboard, time
-from enum import Enum
-
-class Gestures(Enum):
-    null = 0
-    click = 1
-    double_click = 2
-    right_click = 3
-    drag = 4
-    out_of_range = 5
-
-
-class GestureRecognition():
-
-    def __init__(self):
-        self.gesture = Gestures.null
-        self.i = 0
-
-    def update(self):
-        pass
+from gesture_recognition.gestures import GestureRecognition
 
 class KeyboardGestureRecognition(GestureRecognition):
 
@@ -31,7 +13,9 @@ class KeyboardGestureRecognition(GestureRecognition):
         super().__init__()
         self.pressed = {"a": False, "s": False, "d": False, "o": False} # a: click, s:d_click, d: r_click
         keyboard.hook(self.update)
-        # self.i = 0
+        self.i = 0
+        print("[DEBUG] Keyboard Gesture Input Initialized")
+
 
     def update(self, event):
         #print(event.event_type)
