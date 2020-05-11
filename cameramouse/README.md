@@ -3,6 +3,17 @@
 ## Contents
 
 ### Files of interest to run 
-1. from the cameramouse directory: python3 -m hand_tracking --realsense or python3 -m hand_tracking --webcam --src 0
-2. from the cameramouse directory: python3 main.py 
-    1. To test different control, filters or segmentation techniques alter config.yaml
+
+Make sure to edit config.yaml to match your setup and the different control/segmentation type you want to use
+```
+cd cameramouse
+python3 main.py 
+```
+
+To run only the hand tracking module
+```
+cd cameramouse
+python3 -m hand_tracking --webcam -src 0
+or
+python3 -m hand_tracking --realsense
+```
