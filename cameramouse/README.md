@@ -16,7 +16,9 @@ or
 python3 -m hand_tracking --realsense
 ```
 
-![System Diagram](https://github.com/toby-l-baker/assistive-mouse-capstone/edit/master/cameramouse/cameramouse-system-diagram.PNG)
+
+
+![](https://github.com/toby-l-baker/assistive-mouse-capstone/edit/master/cameramouse/cameramouse-system-diagram.PNG)
 
 ### Future Work
 
