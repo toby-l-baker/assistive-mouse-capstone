@@ -26,7 +26,7 @@ python3 -m hand_tracking --realsense
     1. Just needs to take in an image and return the coordinates of the hand centroid in the frame provided.
     2. Colour segmentation is sensitive to the calibration & lighting. If your encountering issues just pull your hand away and recalibrate.
     3. Another issue with colour segmentation is that it performs poorly when the hand is moved to the edges of the frame. On calibration it may be worth taking several hand samples, some from the corners and others from the centre of the frame.
-    3. The tracker calls ```adapt_histogram``` and passes a square subsection of the frame that surrounds the centroid. This attempts to account for changes in lighting but mostly makes it perform worse. Perhaps because the region is too small. 
+    3. The tracker calls ```adapt_histogram``` and passes a square subsection of the frame that surrounds the centroid. This attempts to account for changes in lighting but mostly makes it perform worse. Perhaps because the region is too small. The histogram representation of the skin is updated by a rate according to ```self.alpha```.
     4. Other hand location techniques should definitely be tested such as classifiers or anything else that seems feasible.
 3. Filter 
     1. Takes in the hands position and is capable of getting the filtered position. 
