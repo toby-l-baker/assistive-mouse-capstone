@@ -1,6 +1,6 @@
 """
 Description: Functions to manipulate MediaPipe keypoints
-Author: Ayusman Saha
+Author: Ayusman Saha (aysaha@berkeley.edu)
 """
 import numpy as np
 import pandas as pd

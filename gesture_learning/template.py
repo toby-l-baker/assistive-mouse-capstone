@@ -2,7 +2,7 @@
 
 """
 Description: Template for gesture recognition via machine learning
-Author: Ayusman Saha
+Author: Ayusman Saha (aysaha@berkeley.edu)
 """
 import sys
 
@@ -14,7 +14,7 @@ import keypoints as kp
 # --------------------------------------------------------------------------------------------------
 
 SPLIT = 0.75                # split percentage for training vs. testing data
-NORMALIZATION = 'cartesian' # type of data normalization ('cartesian' or 'polar')
+NORMALIZATION = 'features'  # type of data normalization ('cartesian', 'polar', or 'features')
 
 # --------------------------------------------------------------------------------------------------
 
@@ -39,18 +39,18 @@ def main(args):
     '''
     do all machine learning work here
 
-    train.data contains entries that are formatted as 20 (x,y) points in order. These points
-    were generated from MediaPipe and correspond to keypoints on the user's hand. Although
-    MediaPipe generates 21 points, the base of the hand is used as the origin (0,0) when
-    normalizing and is therfore unnecessary.
+    train.data contains entries that are formatted as 21 (x,y) points in order. These points
+    were generated from MediaPipe and correspond to keypoints on the user's hand. When normalized,
+    this becomes a set of 20 features depending on the normalization method.
 
     train.labels contains integers corresponding to different gestures. Each data entry has a
     corresponding label arranged such that train.data[i] is categorized by train.labels[i].
-    Currently, the gesture classes for the 'fourClass' dataset are:
+    The gesture classes for the 'fiveClass' dataset are:
         0 - CLOSE
-        1 - OK
-        2 - OPEN
-        3 - CLICK
+        1 - OPEN
+        2 - FINGERS_ONE
+        3 - FINGERS_TWO
+        4 - THUMB_BENT
 
     test.data is formatted the same as train.data and can be used to
     test the model against data it has never seen before
