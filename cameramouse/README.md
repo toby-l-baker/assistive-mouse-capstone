@@ -19,11 +19,23 @@ python3 -m hand_tracking --realsense
 
 ### System Overview
 
-1. Hand Tracking: Responsible for keeping track of the hands state (position and velocity information). In particular I have been using hand tracking to predict where the hand will be so I only need to check a small subset of the frame.
-2. Hand Segmentation: Just needs to take in an image and return the coordinates of the hand centroid in the frame provided.
-3. Filter: Takes in the hands position and is capable of getting the filtered position. Has two functions: insert_point and get_filtered_position.
-4. Control: Takes in the filtered positions of the hand and maps this to cursor motion. Also takes in gesture info(type Gestures in gesture_recognition/gestures.py) and maps that to cursor actions such as a click or right-click. 
-5. Gesture Recognition: Processes whatever input be it video or voice and outputs the gesture type at any point to the controller module.
+1. Hand Tracking 
+    1. Responsible for keeping track of the hands state (position and velocity information). 
+    2. In particular I have been using hand tracking to predict where the hand will be so I only need to check a small subset of the frame.
+2. Hand Segmentation: 
+    1. Just needs to take in an image and return the coordinates of the hand centroid in the frame provided.
+    2. Colour segmentation is sensitive to the calibration & lighting. If your encountering issues just pull your hand away and recalibrate.
+    3. Another issue with colour segmentation is that it performs poorly when the hand is moved to the edges of the frame. On calibration it may be worth taking several hand samples, some from the corners and others from the centre of the frame.
+    3. The tracker calls ```adapt_histogram``` and passes a square subsection of the frame that surrounds the centroid. This attempts to account for changes in lighting but mostly makes it perform worse. Perhaps because the region is too small. 
+    4. Other hand location techniques should definitely be tested such as classifiers or anything else that seems feasible.
+3. Filter 
+    1. Takes in the hands position and is capable of getting the filtered position. 
+    2. Has two primary functions: ```insert_point``` and ```get_filtered_position```.
+4. Control
+    1. Takes in the filtered positions of the hand and maps this to cursor motion. 
+    2. Also takes in gesture info(type Gestures in gesture_recognition/gestures.py) and maps that to cursor actions such as a click or right-click. 
+5. Gesture Recognition
+    1. Processes whatever input be it video or voice and outputs the gesture type at any point to the controller module.
 
 ![cameramouse-system-diagram](https://github.com/toby-l-baker/assistive-mouse-capstone/blob/master/cameramouse/cameramouse-system-diagram.PNG)
 
