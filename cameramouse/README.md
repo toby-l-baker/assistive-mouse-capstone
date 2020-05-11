@@ -2,7 +2,8 @@
 
 ### Files of interest to run 
 
-Make sure to edit config.yaml to match your setup and the different control/segmentation type you want to use
+Make sure to edit config.yaml to match your setup and the different control/segmentation type you want to use. A video demo can be seen [here](https://youtu.be/ekWOpIs6XiM). You place your hand in the green square, press 'z' to calibrate the user's skin colour and finally outstretch your hand to have it be detected. After this you can move your hand around to control the cursor. When using the keyboard mouse press 'o' to go out of range and any other key to exit. 'd' to start dragging and 'd' to stop. 's' is single click and the others can be found in gesture_recognition/keyboard.py.
+
 ```
 cd cameramouse
 python3 main.py 
@@ -18,7 +19,7 @@ python3 -m hand_tracking --realsense
 
 ### System Overview
 
-1. Hand Tracking: 
+1. Hand Tracking: Responsible for keeping track of the hands state (position and velocity information). In particular I have been using hand tracking to predict where the hand will be so I only need to check a small subset of the frame.
 
 ![cameramouse-system-diagram](https://github.com/toby-l-baker/assistive-mouse-capstone/blob/master/cameramouse/cameramouse-system-diagram.PNG)
 
