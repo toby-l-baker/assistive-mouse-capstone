@@ -5,7 +5,7 @@ Date Created: 28/NOV/2019
 """
 
 import keyboard, time
-from gesture_recognition.gestures import GestureRecognition
+from gesture_recognition.gestures import GestureRecognition, Gestures
 
 class KeyboardGestureRecognition(GestureRecognition):
 
@@ -22,6 +22,7 @@ class KeyboardGestureRecognition(GestureRecognition):
         self.i += 1
         if event.name == "s":
             if event.event_type == "down":
+                self.pressed["o"] = False
                 if self.pressed[event.name]:
                     self.gesture = Gestures.null # debouncing
                     return
@@ -33,6 +34,7 @@ class KeyboardGestureRecognition(GestureRecognition):
                 self.gesture = Gestures.null
         elif event.name == "a":
             if event.event_type == "down":
+                self.pressed["o"] = False
                 if self.pressed[event.name]:
                     self.gesture = Gestures.null
                     return
@@ -44,6 +46,7 @@ class KeyboardGestureRecognition(GestureRecognition):
                 self.gesture = Gestures.null
         elif event.name == "r":
             if event.event_type == "down":
+                self.pressed["o"] = False
                 if self.pressed[event.name]:
                     self.gesture = Gestures.null
                     return
@@ -55,6 +58,7 @@ class KeyboardGestureRecognition(GestureRecognition):
                 self.gesture = Gestures.null
         elif event.name == "d":
             if event.event_type == "down":
+                self.pressed["o"] = False
                 if self.pressed[event.name]:
                     return
                 # set state of key to pressed
@@ -69,6 +73,6 @@ class KeyboardGestureRecognition(GestureRecognition):
             if event.event_type == "down":
                 # set state of key to pressed
                 self.gesture = Gestures.out_of_range
-            else:
-                self.pressed[event.name] = False
-                self.gesture = Gestures.null
+            # else:
+            #     self.pressed[event.name] = False
+            #     self.gesture = Gestures.out_of_range

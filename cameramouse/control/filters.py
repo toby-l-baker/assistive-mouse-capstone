@@ -32,7 +32,10 @@ class FIRFilter(Filter):
         self.insert_point(centroid)
         p_x = np.average(self.positions[:, 0])
         p_y = np.average(self.positions[:, 1])
-        return np.array([int(p_x), int(p_y)])
+        try:
+            return np.array([int(p_x), int(p_y)])
+        except:
+            return np.array([0, 0])
 
 class IIRFilter(Filter):
     def __init__(self, size):
@@ -40,8 +43,11 @@ class IIRFilter(Filter):
         self.alpha = 0.7 # how much to weight old readings
 
     def get_filtered_position(self, centroid):
-        frac = self.alpha/self.filter_size
-        p_x = np.sum(frac*self.positions[:, 0]) + (1-self.alpha)*centroid[0]
-        p_y =  np.sum(frac*self.positions[:, 1])  + (1-self.alpha)*centroid[1]
-        self.insert_point(np.array([p_x, p_y]))
-        return np.array([p_x, p_y])
+        try:
+            frac = self.alpha/self.filter_size
+            p_x = np.sum(frac*self.positions[:, 0]) + (1-self.alpha)*centroid[0]
+            p_y =  np.sum(frac*self.positions[:, 1])  + (1-self.alpha)*centroid[1]
+            self.insert_point(np.array([p_x, p_y]))
+            return np.array([p_x, p_y])
+        except:
+            return np.array([0, 0])

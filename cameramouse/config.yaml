@@ -1,6 +1,6 @@
 # Gesture params
 gesture: 
-  type: none # options none, keyboard
+  type: keyboard # options none, keyboard
 
 # OS you are using - Linux and Windows supported
 os: windows # options linux, windows
@@ -18,5 +18,5 @@ tracking:
 # Cursor control parameters
 control: 
   type: joystick # options joystick, absolute, relative
-  filter: fir # fir, iir
-  filter_length: 3 # whatever int you like!
+  filter: iir # fir, iir
+  filter_length: 3 # whatever int you like!d

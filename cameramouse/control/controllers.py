@@ -8,6 +8,7 @@ Various cursor control methods - absolute, relative and joystick control
 import time, copy
 import numpy as np
 import gesture_recognition.gestures as gr
+from control.mouse_states import InRange, OutOfRange, Drag
 
 
 class Control():
@@ -21,6 +22,8 @@ class Control():
         # Dictionaries to hold filtered information about the velocity and position of the hand
         self.current = {"position": np.array([0, 0]), "velocity": np.array([0, 0]), "timestamp": time.time()}
         self.previous = {"position": np.array([0, 0]), "velocity": np.array([0, 0]), "timestamp": time.time()}
+
+        self.state = InRange(self.mouse)
 
     def setup(self, point):
         """
@@ -55,36 +58,52 @@ class Control():
         self.current["velocity"] = -(self.current["position"] - self.previous["position"]) / dt
         self.previous = copy.copy(self.current)
     
+    def update_state(self, gesture):
+        """
+        Description: updates the state of the mouse based on the most recent gesture input
+        Inputs:
+            gesture: Gesture obj, used to trigger state changes
+        """
+        self.state = self.state.on_event(gesture)
+
+
     def execute(self, gesture):
         """
         According to the gesture being made this function executes cursor movements and actions
         """
-        if gesture == gr.Gestures.out_of_range:
-            return
+
+        # x, y = self.map_absolute()
+        # dx, dy = self.map_relative()
+        self.update_state(gesture)
+
+        cmd_x, cmd_y = None, None
+
+        if self.state.__repr__() == "InRange":
+            cmd_x, cmd_y = self.map_absolute()
         else:
-            x, y = self.map_absolute()
-            dx, dy = self.map_relative()
-            
-            # Execution of gestures
-            if gesture == gr.Gestures.drag:
-                if self.mouse.state == "UP":
-                    self.mouse.mouse_down()
-                    self.mouse.state = "DOWN"
-                else:
-                    self.mouse.moveD(dx, dy) # needs to use differences
-            else:
-                if self.mouse.state == "DOWN":
-                    self.mouse.mouse_up()
-                    self.mouse.state = "UP"
-                if gesture == gr.Gestures.click:
-                    self.mouse.left_click()
-                elif gesture == gr.Gestures.double_click:
-                    self.mouse.double_click()
-                elif gesture == gr.Gestures.right_click:
-                    self.mouse.right_click()
-                else:
-                    self.mouse.move(x, y)
-                    # print("Moving to {}".format((x, y)))
+            cmd_x, cmd_y = self.map_relative()
+
+        self.state.execute(gesture, cmd_x, cmd_y)
+            # # Execution of gestures
+            # if gesture == gr.Gestures.drag:
+            #     if self.mouse.state == "UP":
+            #         self.mouse.mouse_down()
+            #         self.mouse.state = "DOWN"
+            #     else:
+            #         self.mouse.moveD(dx, dy) # needs to use differences
+            # else:
+            #     if self.mouse.state == "DOWN":
+            #         self.mouse.mouse_up()
+            #         self.mouse.state = "UP"
+            #     if gesture == gr.Gestures.click:
+            #         self.mouse.left_click()
+            #     elif gesture == gr.Gestures.double_click:
+            #         self.mouse.double_click()
+            #     elif gesture == gr.Gestures.right_click:
+            #         self.mouse.right_click()
+            #     else:
+            #         self.mouse.move(x, y)
+            #         # print("Moving to {}".format((x, y)))
 
 class AbsoluteControl(Control):
     def __init__(self, filter, mouse, monitor, im_shape):

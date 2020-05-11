@@ -79,6 +79,7 @@ class HandSegmentationMouse(CameraMouse):
 
             # if the hand is lost, recalibrate and locate the hand
             if not self.tracker.found:
+                # print("Heyo")
                 if calibrated == False:
                     self.tracker.handSeg.get_histogram()
                     calibrated = True
@@ -88,19 +89,22 @@ class HandSegmentationMouse(CameraMouse):
     
             # hand is still in view, track it
             else:
+                # print("neyo")
                 centroid = self.tracker.update_position(color_frame, self.opts["control"]["type"])
                 # gesture = self.gesture_recognition.update()
 
-                # Make sure we aren't doubling down on the same action
+                # Make sure we aren't doubling down on the same action, keyboard recognition is slower than main algorithm
                 if self.last_gesture_update < self.gesture_recognition.i:
                     self.last_gesture_update = self.gesture_recognition.i
+                elif self.gesture_recognition.gesture == Gestures.out_of_range:
+                    pass
                 elif self.last_gesture_update == self.gesture_recognition.i and not (self.gesture_recognition.gesture == Gestures.drag):
                     self.gesture_recognition.gesture = Gestures.null
                 
                 self.control.update(centroid)
                 self.control.execute(self.gesture_recognition.gesture)
 
-                caibrated = False # to ensure if the hand is lost we recalibrate
+                calibrated = False # to ensure if the hand is lost we recalibrate
 
             cv2.imshow("CameraMouse", color_frame)
 

@@ -6,6 +6,7 @@ Date Created: 28 Nov 2018
 
 try:
     import win32api, win32con
+    import mouse
 except:
     import mouse
     import pyautogui
@@ -57,10 +58,12 @@ class WindowsMouse(Mouse):
     def mouse_down(self):
         # x, y = win32api.GetCursorPos()
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN,0,0,0,0)
+        self.state = "DOWN"
 
     def mouse_up(self):
         # x, y = win32api.GetCursorPos()
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP,0,0,0,0)
+        self.state = "UP"
 
     def moveD(self, dx, dy): # MOVE DRAG
         win32api.mouse_event(win32con.MOUSEEVENTF_MOVE,int(dx),int(dy),0,0)

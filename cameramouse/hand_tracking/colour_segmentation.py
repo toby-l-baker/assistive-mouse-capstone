@@ -100,10 +100,13 @@ class HandSegmetation():
         Takes in an RGB sample from an image and updates the hand histogram at rate self.alpha
         """
         roi = cv2.cvtColor(sample, cv2.COLOR_BGR2HSV)
-        hand_hist_new = cv2.calcHist([roi], [0, 1], None, [12, 15], [0, 180, 0, 256])
-        hand_hist_new = cv2.normalize(hand_hist_new, hand_hist_new, 0, 255, cv2.NORM_MINMAX)
-        self.hand_hist = hand_hist_new * self.alpha + (1-self.alpha) * self.hand_hist
-        self.hand_hist = cv2.normalize(self.hand_hist, self.hand_hist, 0, 255, cv2.NORM_MINMAX)
+        try:
+            hand_hist_new = cv2.calcHist([roi], [0, 1], None, [12, 15], [0, 180, 0, 256])
+            hand_hist_new = cv2.normalize(hand_hist_new, hand_hist_new, 0, 255, cv2.NORM_MINMAX)
+            self.hand_hist = hand_hist_new * self.alpha + (1-self.alpha) * self.hand_hist
+            self.hand_hist = cv2.normalize(self.hand_hist, self.hand_hist, 0, 255, cv2.NORM_MINMAX)
+        except:
+            pass
 
     def get_objects(self, frame):
         """
