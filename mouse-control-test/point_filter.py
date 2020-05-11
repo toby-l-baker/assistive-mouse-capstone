@@ -22,8 +22,8 @@ class Data:
         self.y_std = np.std(self.y)
 
 '''Grab data from log file'''
-data_stat = np.genfromtxt('stay_still.csv', delimiter=',')
-data_right = np.genfromtxt('move_right.csv', delimiter=',')
+data_stat = np.genfromtxt('mouse_data/stay_still.csv', delimiter=',')
+data_right = np.genfromtxt('mouse_data/move_right.csv', delimiter=',')
 data_circle = np.genfromtxt('mouse_data/circle.csv', delimiter=',')
 
 stat = Data(data_stat)
