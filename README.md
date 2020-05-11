@@ -42,6 +42,10 @@ The data is transmitted as a string formatted as `"x_cent, y_cent, x_rect, y_rec
 `(x_rect, y_rect, w_rect, h_rect)` is the location and size of the bounding box expressed as floating-point numbers.
 Note that this information is only available when running Demo 2.
 
+## OpenCV
+
+Head to the ```cameramouse/README.md``` to understand more about the purely OpenCV implementation and possible future steps on this particular avenue. Created since this will be portable to all OS's and is lightweight in terms of computation, currently runs at the full 30 FPS. MediaPipe is very promising and provides a lot of good information regarding gestures but is computationally expensive and only works on Linux. Differentiating hand gestures is hard with OpenCV but inputs such as voice could be useful. I believe Weihao had some luck with some voice recognition software called snowboy.
+
 ## Gesture Learning
 TODO
 
