@@ -16,9 +16,20 @@ or
 python3 -m hand_tracking --realsense
 ```
 
+### System Overview
 
+1. Hand Tracking: 
 
-![cameramouse-system-diagram](https://github.com/toby-l-baker/assistive-mouse-capstone/edit/master/cameramouse/cameramouse-system-diagram.PNG)
+![cameramouse-system-diagram](https://github.com/toby-l-baker/assistive-mouse-capstone/master/cameramouse/cameramouse-system-diagram.PNG)
+
+### File Structure
+
+1. hardware/
+2. hand_tracking/
+3. gesture_recognition/
+4. control/
+5. utils.py
+6. cameramouse.py
 
 ### Future Work
 
