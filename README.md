@@ -25,6 +25,8 @@ cd mediapipe
 ./scripts/run_demo2.sh
 ```
 
+Demo2 aims to integrate HSV OpenCV Colour Segmentation with MediaPipe. This means calibration can happen automatically when MediaPipe detects the hand. It doens't work super reliably as MediaPipe has false positives. It needs improvements where when mediapipe is laggy, frames still get passed to the node. I believe it is possible to have some nodes receive data more often than others. It aims to get the benefits of MediaPipe with regard to keypoints for gestures and more speed by using the hand segmentation.
+
 ### Networking
 Protocol: UDP  
 IP Address: `127.0.0.1`  
