@@ -2,7 +2,14 @@
 
 ### Dependencies
 ```
-pip install keyboard==0.13.4 numpy==1.16.5 matplotlib==3.1.1 opencv-python pyyaml==5.3.1 argparse pyrealsense2==2.29.0.1124 mouse==0.7.1 pyautogui==0.9.48
+pip install keyboard==0.13.4 \
+            numpy==1.16.5 \ 
+            matplotlib==3.1.1 \
+            opencv-python pyyaml==5.3.1 \
+            argparse \
+            pyrealsense2==2.29.0.1124 \
+            mouse==0.7.1 \
+            pyautogui==0.9.48
 ```
 
 ### Files of interest to run 
