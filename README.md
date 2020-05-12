@@ -18,7 +18,11 @@ cd mediapipe
 cd mediapipe
 ./scripts/run_demo1.sh
 ```
+Demo1 uses a frame reduced MediaPipe(described in the capstone report, implemented in commit d98bf446c65d2c046703090f4216b1a2c5ee4469 in mediapipe, note assistive-mouse-capstone/mediapipe itself is also a repo). [gesture_detection_calculator.cc](https://github.com/toby-l-baker/assistive-mouse-capstone/blob/master/mediapipe/mediapipe/calculators/util/gesture_detection_calculator.cc) gets the coordinates of 21 keypoints and uses hand geometry to determine the current gesture, and uses a number to represent it. There are two versions of this file, the old version simply counts the number of scretch fingers, the [new version](https://github.com/toby-l-baker/assistive-mouse-capstone/blob/master/mediapipe/mediapipe/calculators/util/gesture_detection_new_calculator.cc) uses a gesture definition like [this](https://docs.google.com/presentation/d/1R5K-rlorkxrP03RoG5ys7vCLMY0H_5_y4Tqb3lC5Uv8/edit?usp=sharing). Currently if you build MediaPipe you get the old version, you need to mannually substitute the file to get the new version. 
 
+The number representation of the gesture then goes to [pipe_writing_calculator.cc](https://github.com/toby-l-baker/assistive-mouse-capstone/blob/master/mediapipe/mediapipe/calculators/util/pipe_writing_calculator.cc) which calculates the centroid of the 5 picked keypoint (described in the report) and writes it to a fifo together with the gesture.
+
+The [mouse control script](https://github.com/toby-l-baker/assistive-mouse-capstone/blob/master/mouse-control-test/mouse_control_for_demo1_with_new_gesures.py) works with the new version.
 ### Running Demo 2
 ```
 cd mediapipe
@@ -52,8 +56,9 @@ TODO
 ## Mouse Control
 TODO
 
+For mouse control for demo 1, see the comments in the [script](https://github.com/toby-l-baker/assistive-mouse-capstone/blob/master/mouse-control-test/mouse_control_for_demo1_with_new_gesures.py) for details.
 ## Testing
-TODO
+See the capstone report for details.
 
 ## Important Files/Directories
 TODO  
