@@ -1,5 +1,10 @@
 # OpenCV Only Full Python  Implementation
 
+### Dependencies
+```
+pip install keyboard==0.13.4 numpy==1.16.5 matplotlib==3.1.1 opencv-python pyyaml==5.3.1 argparse pyrealsense2==2.29.0.1124 mouse==0.7.1 pyautogui==0.9.48
+```
+
 ### Files of interest to run 
 
 Make sure to edit ```config.yaml``` to match your setup and the different control/segmentation type you want to use. A video demo can be seen [here](https://youtu.be/ekWOpIs6XiM). You place your hand in the green square, press 'z' to calibrate the user's skin colour and finally outstretch your hand to have it be detected. After this you can move your hand around to control the cursor. When using the keyboard mouse press 'o' to go out of range and any other key to exit this state. 'd' to start dragging and 'd' to stop. 's' is single click and the other actions can be found in gesture_recognition/keyboard.py.
