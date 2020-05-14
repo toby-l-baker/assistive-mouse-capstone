@@ -43,11 +43,13 @@ python3 -m hand_tracking --realsense
 3. Filter 
     1. Takes in the hands position and is capable of getting the filtered position. 
     2. Has two primary functions: ```insert_point``` and ```get_filtered_position```.
+    3. These filters are very basic and use constant scale factors. The FIR is basically just a moving average filter. These could be improved on with better analysis on noise/users tremors or shakes.
 4. Control
     1. Takes in the filtered positions of the hand and maps this to cursor motion. 
     2. Also takes in gesture info(type Gestures in gesture_recognition/gestures.py) and maps that to cursor actions such as a click or right-click. 
 5. Gesture Recognition
     1. Processes whatever input be it video or voice and outputs the gesture type at any point to the controller module.
+    2. Currently there is only a keyboard implementation which maps key presses to different mouse actions.
 
 ![cameramouse-system-diagram](https://github.com/toby-l-baker/assistive-mouse-capstone/blob/master/cameramouse/cameramouse-system-diagram.PNG)
 
