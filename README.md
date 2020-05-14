@@ -74,7 +74,7 @@ TODO
 `cameramouse/config.yaml`:contains the parameters required to load each module along with various tunable constants.
 `cameramouse/utils.py`: if you make a new module you will need to edit the Loaders class to include it.
 `cameramouse/cameramouse.py`: handles the initialisation and running of all modules, passes data between them.
-`cameramouse/control/filters.py`: contains super and subclasses for simple IIR and FIR filters. Work to be done on improving these.
-`cameramouse/control/controllers.py`: contains various methods of mapping hand movement to cursor movement, e.g. absolute or relative.
-`cameramouse/gestures/`: contains Gestures object as well as an implementation that uses keyboard presses. Work to be done here (voice or hand gesture recognition using OpenCV)
+`cameramouse/control/filters.py`: contains super and subclasses for simple IIR and FIR filters.
+`cameramouse/control/controllers.py`: contains various methods of mapping hand movement to cursor movement.
+`cameramouse/gestures/`: contains Gestures object as well as an implementation that uses keyboard presses.
 `cameramouse/hand_tracking/`: contains hand segmentation objects and hand tracking objects.
