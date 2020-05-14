@@ -29,7 +29,7 @@ cd mediapipe
 ./scripts/run_demo2.sh
 ```
 
-Demo2 aims to integrate HSV OpenCV Colour Segmentation with MediaPipe. This means calibration can happen automatically when MediaPipe detects the hand. It doens't work super reliably as MediaPipe has false positives. It needs improvements where when mediapipe is laggy, frames still get passed to the node. I believe it is possible to have some nodes receive data more often than others. It aims to get the benefits of MediaPipe with regard to keypoints for gestures and more speed by using the hand segmentation.
+Demo2 aims to integrate HSV OpenCV Colour Segmentation with MediaPipe. This means calibration can happen automatically when MediaPipe detects the hand. It doens't work super reliably as MediaPipe has false positives. It needs improvements where when mediapipe is laggy, frames still get passed to the OpenCV Segmentation node. I believe it is possible to have some nodes receive data more often than others. It aims to get the benefits of MediaPipe with regard to keypoints for gestures and more speed by using the hand segmentation in parallel with MedaPipe.
 
 ### Networking
 Protocol: UDP  
@@ -69,3 +69,12 @@ TODO
 `gesture_learning/template.py`: template for training a gesture learning model  
 `gesture_learning/data/`: contains gesture datasets  
 `gesture_learning/models/`: contains gesture learning models  
+
+## Important OpenCV Implementation files
+`cameramouse/config.yaml`:contains the parameters required to load each module along with various tunable constants.
+`cameramouse/utils.py`: if you make a new module you will need to edit the Loaders class to include it.
+`cameramouse/cameramouse.py`: handles the initialisation and running of all modules, passes data between them.
+`cameramouse/control/filters.py`: contains super and subclasses for simple IIR and FIR filters. Work to be done on improving these.
+`cameramouse/control/controllers.py`: contains various methods of mapping hand movement to cursor movement, e.g. absolute or relative.
+`cameramouse/gestures/`: contains Gestures object as well as an implementation that uses keyboard presses. Work to be done here (voice or hand gesture recognition using OpenCV)
+`cameramouse/hand_tracking/`: contains hand segmentation objects and hand tracking objects.
