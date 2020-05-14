@@ -52,13 +52,13 @@ Head to the ```cameramouse/README.md``` to understand more about the purely Open
 
 ## Gesture Learning
 ### Dataset
-gesture_learning/data stores all dataset we created. Each line in dataset consists (x, y) coordinates of 21 keypoints and its class number. We denote its class number in braces. twoClass includes close (0) and open (1) gestures; threeClass includes close (0), OK (1), open(2) gestures; fourClass includes close (0), open (1), OK (2) and click (index finger bent, 3) gestures; fiveClass includes close (0), open (1), scroll_down (index finger stretching, 2), scroll_up (ndex and middle fingers stretching, 3) and slow (thumb stretching, 4). See vedio example for more concrete gesture examples.
+`gesture_learning/data` stores all dataset we created. Each line in dataset consists (x, y) coordinates of 21 keypoints and its class number. We denote its class number in braces. twoClass includes close (0) and open (1) gestures; threeClass includes close (0), OK (1), open(2) gestures; fourClass includes close (0), open (1), OK (2) and click (index finger bent, 3) gestures; fiveClass includes close (0), open (1), scroll_down (index finger stretching, 2), scroll_up (ndex and middle fingers stretching, 3) and slow (thumb stretching, 4). See vedio example for more concrete gesture examples.
 
 ### Models
-gesture_learning/models stores all models we trained for five models. There are KMeans, Gaussian Mixture, Random Forest and a simple DNN we tried. To be noticed, KMeans, Gaussian Mixture, Random Forest models are kept in joblib formate (use joblib_model= joblib.load(file_path) to load). DNN model is kept in h5 format.
+`gesture_learning/models` stores all models we trained for five models. There are KMeans, Gaussian Mixture, Random Forest and a simple DNN we tried. To be noticed, KMeans, Gaussian Mixture, Random Forest models are kept in joblib formate (use joblib_model= joblib.load(`file_path`) to load). DNN model is kept in h5 format.
 
 ### Train
-gesture_learning/learn.py reads in raw dataset mentioned in the previous part, generates augmented features and runs KMeans/Gaussian Mixture/Random Forest Model. The augmented features are strecthing finger numbers, angles between finger pairs and finger distance ratio. See comments in code for more information. We also provide functionality that get mean validation accuracy in several epochs and save models for other use (intergrated in Mediapipe, i.e. joblib.dump(modle, file_path)). Moreover, it is easy to add parser and args to make the learn.py more flexible in terms of file_path and choice of model.
+`gesture_learning/learn.py` reads in raw dataset mentioned in the previous part, generates augmented features and runs KMeans/Gaussian Mixture/Random Forest Model. The augmented features are strecthing finger numbers, angles between finger pairs and finger distance ratio. See comments in code for more information. We also provide functionality that get mean validation accuracy in several epochs and save models for other use (intergrated in Mediapipe, i.e. joblib.dump(modle, `file_path`)). Moreover, it is easy to add parser and args to make the `learn.py` more flexible in terms of `file_path` and choice of model.
 
 ## Mouse Control
 TODO
