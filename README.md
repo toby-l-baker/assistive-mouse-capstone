@@ -60,6 +60,11 @@ For mouse control for demo 1, see the comments in the [script](https://github.co
 ## Testing
 See the capstone report for details.
 
+## Depth Camera
+We have an Intel Realsense depth camera that is able to get extra depth information. The camera should work with [IntelRealsense](https://github.com/IntelRealSense/librealsense). The repository contains many depth camera examples such as outputting depth information and point cloud. It also contains a OpenCV implementation of DNN. To compile the examples, one can follow the instructions in readme from that repo.
+
+We did some reseach of the depth camera, some infomation can be found in this [slides](https://docs.google.com/presentation/d/1SyncibUJNlsJfWg0QvKgYm_z7swszJZDxj19tprEECY/edit?usp=sharing) as well as the report.
+
 ## Important Files/Directories
 TODO  
 `mediapipe/mediapipe/calculators/util/landmark_forwarder_calculator.cc`: forwards 21 key points over UDP  
