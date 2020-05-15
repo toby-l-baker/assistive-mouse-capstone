@@ -18,9 +18,9 @@ cd mediapipe
 cd mediapipe
 ./scripts/run_demo1.sh
 ```
-Demo 1 uses a frame reduced MediaPipe (described in the capstone report, implemented in commit d98bf446c65d2c046703090f4216b1a2c5ee4469 in mediapipe, note assistive-mouse-capstone/mediapipe itself is also a repo). [gesture_detection_calculator.cc](https://github.com/toby-l-baker/assistive-mouse-capstone/blob/master/mediapipe/mediapipe/calculators/util/gesture_detection_calculator.cc) gets the coordinates of 21 keypoints and uses hand geometry to determine the current gesture, and uses a number to represent it. There are two versions of this file, the old version simply counts the number of scretch fingers, the [new version](https://github.com/toby-l-baker/assistive-mouse-capstone/blob/master/mediapipe/mediapipe/calculators/util/gesture_detection_new_calculator.cc) uses a gesture definition like [this](https://docs.google.com/presentation/d/1R5K-rlorkxrP03RoG5ys7vCLMY0H_5_y4Tqb3lC5Uv8/edit?usp=sharing). Currently if you build MediaPipe you get the old version, you need to mannually substitute the file to get the new version. 
+Demo 1 uses a frame reduced MediaPipe (described in the capstone report, implemented in commit d98bf446c65d2c046703090f4216b1a2c5ee4469 in mediapipe, note assistive-mouse-capstone/mediapipe itself is also a repo). [gesture_detection_calculator.cc](https://github.com/toby-l-baker/assistive-mouse-capstone/blob/master/mediapipe/mediapipe/calculators/util/gesture_detection_calculator.cc) gets the coordinates of 21 key points and uses hand geometry to determine the current gesture, and uses a number to represent it. There are two versions of this file, the old version simply counts the number of scretch fingers, the [new version](https://github.com/toby-l-baker/assistive-mouse-capstone/blob/master/mediapipe/mediapipe/calculators/util/gesture_detection_new_calculator.cc) uses a gesture definition like [this](https://docs.google.com/presentation/d/1R5K-rlorkxrP03RoG5ys7vCLMY0H_5_y4Tqb3lC5Uv8/edit?usp=sharing). Currently if you build MediaPipe you get the old version, you need to mannually substitute the file to get the new version. 
 
-The number representation of the gesture then goes to [pipe_writing_calculator.cc](https://github.com/toby-l-baker/assistive-mouse-capstone/blob/master/mediapipe/mediapipe/calculators/util/pipe_writing_calculator.cc) which calculates the centroid of the 5 picked keypoint (described in the report) and writes it to a fifo together with the gesture.
+The number representation of the gesture then goes to [pipe_writing_calculator.cc](https://github.com/toby-l-baker/assistive-mouse-capstone/blob/master/mediapipe/mediapipe/calculators/util/pipe_writing_calculator.cc) which calculates the centroid of the 5 picked key points (described in the report) and writes it to a FIFO structure with the gesture.
 
 The [mouse control script](https://github.com/toby-l-baker/assistive-mouse-capstone/blob/master/mouse-control-test/mouse_control_for_demo1_with_new_gesures.py) works with the new version.
 ### Running Demo 2
@@ -29,7 +29,7 @@ cd mediapipe
 ./scripts/run_demo2.sh
 ```
 
-Demo 2 aims to integrate HSV OpenCV Colour Segmentation with MediaPipe. This means calibration can happen automatically when MediaPipe detects the hand. It doens't work super reliably as MediaPipe has false positives. It needs improvements where when mediapipe is laggy, frames still get passed to the OpenCV Segmentation node. I believe it is possible to have some nodes receive data more often than others. It aims to get the benefits of MediaPipe with regard to keypoints for gestures and more speed by using the hand segmentation in parallel with MedaPipe.
+Demo 2 aims to integrate HSV OpenCV Colour Segmentation with MediaPipe. This means calibration can happen automatically when MediaPipe detects the hand. It doens't work super reliably as MediaPipe has false positives. It needs improvements where when mediapipe is laggy, frames still get passed to the OpenCV Segmentation node. I believe it is possible to have some nodes receive data more often than others. It aims to get the benefits of MediaPipe with regard to key points for gestures and more speed by using the hand segmentation in parallel with MedaPipe.
 
 ### Networking
 Protocol: UDP  
@@ -51,7 +51,7 @@ Read `cameramouse/README.md` to understand more about the purely OpenCV implemen
 
 ## Gesture Learning
 ### Dataset
-`gesture_learning/data/` stores all dataset we created. Each line in dataset consists (x, y) coordinates of 21 keypoints and its class number. We denote its class number in braces. twoClass includes close (0) and open (1) gestures; threeClass includes close (0), OK (1), open(2) gestures; fourClass includes close (0), open (1), OK (2) and click (index finger bent, 3) gestures; fiveClass includes close (0), open (1), scroll_down (index finger stretching, 2), scroll_up (ndex and middle fingers stretching, 3) and slow (thumb stretching, 4). See vedio example for more concrete gesture examples.
+`gesture_learning/data/` stores all dataset we created. Each line in dataset consists (x, y) coordinates of 21 key points and its class number. We denote its class number in braces. twoClass includes close (0) and open (1) gestures; threeClass includes close (0), OK (1), open(2) gestures; fourClass includes close (0), open (1), OK (2) and click (index finger bent, 3) gestures; fiveClass includes close (0), open (1), scroll_down (index finger stretching, 2), scroll_up (ndex and middle fingers stretching, 3) and slow (thumb stretching, 4). See vedio example for more concrete gesture examples.
 
 ### Training
 `gesture_learning/learn.py` reads in raw dataset mentioned in the previous part, generates augmented features and runs KMeans/Gaussian Mixture/Random Forest Model. The augmented features are strecthing finger numbers, angles between finger pairs and finger distance ratio. See comments in code for more information. We also provide functionality that get mean validation accuracy in several epochs and save models for other use (intergrated in MediaPipe, i.e. `joblib.dump(modle, 'path')`). Moreover, it is easy to add parser and args to make the `learn.py` more flexible.
@@ -75,7 +75,8 @@ We have an Intel Realsense depth camera that is able to get extra depth informat
 We did some reseach of the depth camera, some infomation can be found in this [slides](https://docs.google.com/presentation/d/1SyncibUJNlsJfWg0QvKgYm_z7swszJZDxj19tprEECY/edit?usp=sharing) as well as the report.
 
 ## Important Files/Directories
-TODO - Weihao's MediaPipe files  
+`mediapipe/mediapipe/calculators/util/gesture_detection_calculator.cc`: performs gesture recognition with hand geometry  
+`mediapipe/mediapipe/calculators/util/pipe_writing_calculator.cc`: calculates centroid and forwards over a Unix pipe  
 `mediapipe/mediapipe/calculators/util/landmark_forwarder_calculator.cc`: forwards 21 key points over UDP  
 `mediapipe/mediapipe/calculators/util/hand_tracking_calculator.cc`: hand segmentation and tracking with OpenCV  
 
